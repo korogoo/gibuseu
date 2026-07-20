@@ -1,0 +1,14 @@
+name: add-to-project
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add:
+    if: contains(github.event.issue.labels.*.name, '발표')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+    steps:
+      - run: gh project item-add 8 --owner korogoo --url "${{ github.event.issue.html_url }}"

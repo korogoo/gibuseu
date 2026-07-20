@@ -5,11 +5,19 @@
 
 ## 운영 흐름
 
-1. **주제 확정** — 발표자가 New Issue에서 대분류에 맞는 템플릿(예: "발표 등록 - 데이터베이스")을 고르고, 제목에 발표 주제를 바로 적어서 등록 (조/소분류/유형/완료기준은 드롭다운·텍스트로 채움, CATEGORIES.md 참고할 필요 없음). 대분류 라벨(`CS`/`데이터베이스`/... , 색상 지정됨)이 자동으로 붙고, `assign-author` 워크플로우가 작성자 본인을 assignee로 자동 지정함(단, 작성자가 레포 협업자여야 함). `validate-presentation` 워크플로우가 발표일 형식/완료기준 줄 수/소분류-기타 누락을 자동 검사해서 문제가 있으면 코멘트를 남기고 `형식 확인 필요` 라벨을 붙임
-2. **조 배정** — Actions 탭에서 `assign-teams` 워크플로우를 수동 실행하면 스터디원 8명을 3/3/2 조로 랜덤 배정 (직전 회차와 동일 조합은 재시도)
-3. **디스코드 공지** — 조 배정 결과 + 모이는 시간을 디스코드에 공유
-4. **온라인 발표** — 디스코드에서 조원들이 각자 준비한 주제를 발표
-5. **기록** — 발표자가 정리한 내용을 각자 블로그에 올리고, 링크를 Issue 코멘트에 남긴 뒤 Issue를 닫음(완료 처리)
+1. **조 배정** — Actions 탭에서 `assign-teams` 워크플로우를 수동 실행하면 스터디원 8명을 3/3/2 조로 랜덤 배정 (직전 회차와 동일 조합은 재시도). 배정 끝나면 결과가 **디스코드에 자동 공지**됨 (수동 공유 불필요)
+2. **주제 확정** — 발표자가 New Issue에서 대분류에 맞는 템플릿(예: "발표 등록 - 데이터베이스")을 고르고, 제목에 발표 주제를 바로 적어서 등록 (조/소분류/유형/완료기준은 드롭다운·텍스트로 채움, CATEGORIES.md 참고할 필요 없음). 등록되면 자동으로:
+   - 대분류 라벨(`CS`/`데이터베이스`/... , 색상 지정됨) 부여
+   - `assign-author`가 작성자 본인을 assignee로 지정 (작성자가 레포 협업자여야 성공)
+   - `validate-presentation`이 발표일 형식/완료기준 줄 수/소분류-기타 누락을 검사, 문제 있으면 코멘트 + `형식 확인 필요` 라벨
+   - `add-to-project`가 [Projects 보드](https://github.com/users/korogoo/projects/8)에 자동 추가 (발표일은 Date 필드라 보드에서 캘린더로 볼 수 있음)
+3. **온라인 발표** — 디스코드에서 조원들이 각자 준비한 주제를 발표
+4. **기록** — 발표자가 정리한 내용을 각자 블로그에 올리고, 링크를 Issue 코멘트에 남긴 뒤 Issue를 닫음(완료 처리)
+
+## 리마인더 (매일 자동 실행)
+
+- `remind-missing` — 이번 회차 조 배정 이후 아직 발표 Issue를 안 올린 스터디원이 있으면 디스코드로 알림
+- `remind-overdue` — 발표일이 지났는데 아직 열려있는(블로그 링크 미기재) Issue에 코멘트 + `발표일 지남` 라벨 부여, 디스코드로도 알림 (한 Issue당 한 번만)
 
 ## 구조
 
@@ -22,7 +30,14 @@ teams/history.yaml                        # 조 배정 이력 (자동 갱신)
 scripts/assign_teams.py                   # 랜덤 조 배정 스크립트
 .github/workflows/assign-teams.yml        # 조 배정 자동화 워크플로우
 .github/workflows/validate-presentation.yml # 발표 등록 Issue 형식 자동 검사 봇
+.github/workflows/assign-author.yml       # 작성자를 assignee로 자동 지정
+.github/workflows/add-to-project.yml      # 새 발표 Issue를 Projects 보드에 자동 추가
+.github/workflows/remind-missing.yml      # 미등록자 디스코드 리마인더 (매일)
+.github/workflows/remind-overdue.yml      # 발표일 지난 미완료 Issue 리마인더 (매일)
+scripts/lib.py                            # 리마인더 스크립트 공용 헬퍼 (Issue 본문 파싱, 디스코드 전송)
 ```
+
+Discord 알림을 쓰려면 저장소 Settings → Secrets → `DISCORD_WEBHOOK_URL`이 등록돼 있어야 합니다 (이미 설정됨).
 
 ## 조 랜덤 배정 실행 방법
 

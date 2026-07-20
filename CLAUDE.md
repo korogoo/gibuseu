@@ -11,6 +11,8 @@
 - **카테고리 수정**: 대분류/소분류를 바꾸고 싶다는 요청이 오면 `scripts/generate_issue_templates.py`의 `CATEGORIES`를 고치고 다시 실행 (`.github/ISSUE_TEMPLATE/presentation-*.yml`이 재생성됨), `CATEGORIES.md`도 같이 갱신
 - **완료기준 점검**: 등록된 Issue에서 유형이 "이론 학습"이면 다룰 개념과 정리 범위가, "트러블슈팅"이면 문제 상황과 해결 방법이 채워져 있는지 확인 (SBI 같은 고정 포맷을 강요하지 않음 — 자유 서술). 형식(발표일/완료기준 줄 수/소분류-기타 누락)은 `validate-presentation` 워크플로우가 자동으로 검사해서 코멘트 남김 — 수동으로 다시 검사할 필요 없음
 - **조 라벨 확인**: Issue Form의 "조" 답변이 그대로 라벨(`1조`/`2조`/`3조`)로도 붙으므로 `gh issue list --label 1조` 식으로 조별 등록 현황 확인 가능
+- **디스코드 알림**: `assign-teams`(조 배정 결과), `remind-missing`(미등록자, 매일 09:00 KST), `remind-overdue`(발표일 지난 미완료 건, 매일 09:00 KST)가 `DISCORD_WEBHOOK_URL` 시크릿으로 자동 발송됨 — 사람이 수동으로 디스코드에 공지할 필요 없음
+- **Projects 보드**: https://github.com/users/korogoo/projects/8 (번호 8). `add-to-project` 워크플로우가 `발표` 라벨 붙은 새 Issue를 자동으로 넣음. 이 워크플로우는 `PROJECT_TOKEN` 시크릿(개인 gh 인증 토큰, project 스코프 포함)을 씀 — 토큰 로테이션 시 이 시크릿도 같이 갱신해야 함
 - **디스코드 공지 문구 초안**: 해당 회차 Issue(발표자/발표일/주제)를 바탕으로 짧은 공지 텍스트 작성 (`gh issue list --label 발표`로 확인)
 - **회고/블로그 링크 반영**: 발표 끝난 뒤 해당 Issue에 블로그 링크를 코멘트로 남기고 `gh issue close`로 완료 처리
 

@@ -18,7 +18,7 @@ jobs:
 
       - run: pip install pyyaml
 
-      - run: python scripts/assign_teams.py
+      - run: python scripts/assign_teams.py | tee team_result.txt
 
       - name: Commit result
         run: |
@@ -27,3 +27,12 @@ jobs:
           git add teams/history.yaml
           git diff --cached --quiet && echo "no changes" || git commit -m "chore: 팀 배정 결과 갱신"
           git push
+
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          CONTENT=$(jq -Rs '.' team_result.txt)
+          curl -sf -X POST -H "Content-Type: application/json" \
+            -d "{\"content\": $CONTENT}" \
+            "$DISCORD_WEBHOOK_URL"
