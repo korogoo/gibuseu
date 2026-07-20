@@ -1,0 +1,98 @@
+name: 발표 등록
+description: 이번 회차 발표 주제를 등록합니다
+title: "[발표] "
+labels: ["발표"]
+body:
+  - type: input
+    id: presenter
+    attributes:
+      label: 발표자
+      placeholder: 홍길동
+    validations:
+      required: true
+
+  - type: input
+    id: date
+    attributes:
+      label: 발표일
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: 대분류
+      options:
+        - CS
+        - 데이터베이스
+        - 인프라/DevOps
+        - 아키텍처
+        - 보안
+        - 테스트/QA
+        - AI
+    validations:
+      required: true
+
+  - type: dropdown
+    id: subcategory
+    attributes:
+      label: 소분류
+      description: 대분류에 맞는 항목을 골라주세요 (CATEGORIES.md 매핑표 참고)
+      options:
+        - 컴퓨터 구조
+        - 운영체제
+        - 네트워크
+        - 자료구조 & 알고리즘
+        - JVM & 언어
+        - 인덱스 & 쿼리 최적화
+        - 트랜잭션 & 정합성
+        - 락 & 동시성
+        - 배포 & 인프라
+        - 모니터링 & 관측성
+        - CI/CD
+        - 캐시
+        - 메시징 & 이벤트
+        - MSA & 서비스 간 통신
+        - 인증 & 인가
+        - 암호화 & OWASP
+        - 테스트 전략
+        - 테스트 더블 & TDD
+        - LLM 활용 / RAG
+        - 추천 시스템
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: 유형
+      options:
+        - 이론 학습
+        - 트러블슈팅
+    validations:
+      required: true
+
+  - type: textarea
+    id: topic
+    attributes:
+      label: 발표 주제
+      description: 한 줄로 구체적인 주제를 적어주세요
+    validations:
+      required: true
+
+  - type: textarea
+    id: criteria
+    attributes:
+      label: 학습 완료기준
+      description: "이론 학습 → 이론 항목 + 프로젝트 적용 + SBI 1개 / 트러블슈팅 → Situation / Behavior / Impact"
+    validations:
+      required: true
+
+  - type: input
+    id: blog
+    attributes:
+      label: 블로그 링크
+      description: 발표 끝난 뒤 채워도 됩니다
+    validations:
+      required: false

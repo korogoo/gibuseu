@@ -5,11 +5,11 @@
 
 ## 이 레포에서 자주 하는 작업
 
-- **새 회차 준비**: `teams/history.yaml`에서 가장 최근 회차의 팀 구성을 확인하고, `schedule.md`에 새 행을 추가 (회차 번호, 팀 구성까지만 채우고 주제/카테고리는 발표자 PR로 채워짐)
+- **새 회차 준비**: `teams/history.yaml`에서 가장 최근 회차의 팀 구성을 확인하고, 발표자들에게 New Issue(`발표 등록` 템플릿)로 등록하도록 안내
 - **팀 랜덤 배정**: 직접 실행하지 말고 GitHub Actions `assign-teams` 워크플로우(`gh workflow run assign-teams.yml`)를 트리거하도록 안내 — 로컬에서 `scripts/assign_teams.py`를 돌리면 `teams/history.yaml`과 실제 저장소 상태가 어긋날 수 있음
-- **완료기준 점검**: 유형이 "이론 학습"이면 이론+적용+SBI 3요소가 다 있는지, "트러블슈팅"이면 Situation/Behavior/Impact가 다 있는지 확인
-- **디스코드 공지 문구 초안**: `schedule.md`의 해당 회차 행(팀/발표자/발표일/주제)을 바탕으로 짧은 공지 텍스트 작성
-- **회고/블로그 링크 반영**: 발표 끝난 뒤 `schedule.md`의 블로그 링크 칸과 상태(`완료`)를 갱신하는 PR 작업
+- **완료기준 점검**: 등록된 Issue에서 유형이 "이론 학습"이면 이론+적용+SBI 3요소가 다 있는지, "트러블슈팅"이면 Situation/Behavior/Impact가 다 있는지 확인
+- **디스코드 공지 문구 초안**: 해당 회차 Issue(팀/발표자/발표일/주제)를 바탕으로 짧은 공지 텍스트 작성 (`gh issue list --label 발표`로 확인)
+- **회고/블로그 링크 반영**: 발표 끝난 뒤 해당 Issue에 블로그 링크를 코멘트로 남기고 `gh issue close`로 완료 처리
 
 ## 주의
 
