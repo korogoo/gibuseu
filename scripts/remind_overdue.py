@@ -8,9 +8,10 @@ import json
 import subprocess
 from datetime import date
 
-from lib import BOT_NAME, parse_sections, post_discord
+from lib import COMMENT_PREFIX, parse_sections, post_discord
 
 OVERDUE_LABEL = "발표일 지남"
+NAG_MESSAGE = "취업은 조상님이 시켜주나요? 미루지 말고 블로그 작성하세요👴🏻💸"
 
 
 def list_open_presentation_issues() -> list[dict]:
@@ -42,14 +43,14 @@ def main() -> None:
 
         subprocess.run(
             ["gh", "issue", "comment", number,
-             "--body", f"**{BOT_NAME}**\n\n발표일이 지났어요. 블로그 링크 남기고 이슈를 닫아주세요!"],
+             "--body", f"{COMMENT_PREFIX}\n\n{NAG_MESSAGE}"],
             check=True,
         )
         overdue.append(issue["url"])
 
     if overdue:
         lines = "\n".join(f"- {u}" for u in overdue)
-        post_discord(f"**발표일 지난 미완료 발표 ({len(overdue)}건)**\n{lines}")
+        post_discord(f"{NAG_MESSAGE}\n{lines}")
     print(f"overdue: {len(overdue)}")
 
 

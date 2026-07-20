@@ -68,7 +68,7 @@ def main() -> None:
         return
 
     lines = "\n".join(f"- {m}" for m in missing)
-    post_discord(f"**아직 발표 등록 안 한 스터디원**\n{lines}\n\nNew Issue에서 발표 등록 부탁드려요!")
+    post_discord(f"💸 **아직 발표 빚 안 갚은 사람**\n{lines}\n\nNew Issue에서 발표 등록 부탁드려요!")
     print(f"reminded: {missing}")
 
 

@@ -50,5 +50,5 @@ jobs:
         run: |
           CONTENT=$(jq -Rs '.' team_result.txt)
           curl -sf -X POST -H "Content-Type: application/json" \
-            -d "{\"content\": $CONTENT, \"username\": \"기부스지킴이\"}" \
+            -d "{\"content\": $CONTENT, \"username\": \"기부스지킴이👀\"}" \
             "$DISCORD_WEBHOOK_URL"

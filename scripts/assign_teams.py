@@ -19,6 +19,11 @@ HISTORY_FILE = ROOT / "teams" / "history.yaml"
 TEAM_SIZES = [3, 3, 2]
 MAX_RETRY = 30
 MIN_INTERVAL_DAYS = 3
+WEEKDAYS_KO = ["월", "화", "수", "목", "금", "토", "일"]
+
+
+def format_date_kr(d: date) -> str:
+    return f"{d.month}/{d.day}({WEEKDAYS_KO[d.weekday()]})"
 
 
 def load_members() -> list[str]:
@@ -87,9 +92,9 @@ def main() -> None:
         yaml.dump(history, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
 
-    print(f"# {round_no}회차 팀 배정 ({date.today().isoformat()})")
+    print(f"이번 회차({format_date_kr(date.today())}) 조 편성 나왔습니다 😘🫰💸")
     for i, team in enumerate(teams, start=1):
-        print(f"팀{i}: {', '.join(team)}")
+        print(f"{i}조: {', '.join(team)}")
 
 
 if __name__ == "__main__":

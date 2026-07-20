@@ -1,6 +1,6 @@
 # 기부스 (기술부채상환스터디)
 
-백엔드 실무/CS 지식을 발표로 정리하고, 프로젝트에서 겪은 트러블슈팅을 서로 공유하는 스터디입니다.
+쌓인 기술 부채를 발표로 상환하는 스터디입니다 💸
 
 ## 운영 흐름
 
@@ -12,6 +12,16 @@
 
 > ⚠️ 현재 정식 운영 시작 전 상태입니다 (개인 테스트 웹훅 사용 중, 조 배정 자동 실행은 꺼둠). 자세한 내용은 [`CLAUDE.md`](./CLAUDE.md) 참고.
 
+## 발표 진행상황
+
+<!-- STATUS:START -->
+
+_아직 등록된 발표가 없습니다._
+
+<!-- STATUS:END -->
+
+이 표는 `update-readme` 워크플로우가 Issue 등록/수정/종료 때마다 자동으로 갱신합니다 (수동으로 고치지 마세요).
+
 ## 구조
 
 | 파일/경로 | 설명 |
@@ -22,5 +32,5 @@
 | [`teams/history.yaml`](./teams/history.yaml) | 회차별 조 배정 이력 |
 | [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE) | 대분류별 발표 등록 폼 |
 | [`scripts/`](./scripts) | 조 배정·리마인더·Issue Form 생성 스크립트 |
-| [`.github/workflows/`](./.github/workflows) | 조 배정·형식 검사·assignee 지정·Projects 연동·리마인더 자동화 |
+| [`.github/workflows/`](./.github/workflows) | 조 배정·형식 검사·assignee 지정·Projects 연동·리마인더·README 진행상황 자동화 |
 | [Projects 보드](https://github.com/users/korogoo/projects/8) | 발표 일정 (발표일 기준 캘린더 뷰 가능) |
