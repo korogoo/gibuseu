@@ -5,7 +5,7 @@
 ## 트리거별 참고 문서
 
 - **운영 시작 여부, 웹훅/스케줄 상태** → `.claude/notes/operating-status.md` 읽기
-- **회차/조 배정, 발표 등록 검증, 카테고리 수정, 리마인더, Projects 보드, 라벨** → `.claude/notes/automation.md` 읽기
+- **회차/조 배정, 발표 등록 검증, 카테고리 수정, 리마인더, 라벨** → `.claude/notes/automation.md` 읽기
 - **전체 운영 흐름, 파일 구조 개요** → `README.md` 읽기
 - **스터디원에게 안내할 사용법(발표 등록 방법 등)** → `GUIDE.md` 읽기
 - **대분류/소분류/유형 정의** → `CATEGORIES.md` 읽기

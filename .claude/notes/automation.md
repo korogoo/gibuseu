@@ -28,12 +28,11 @@
 - Discord는 webhook `username` 필드에 `기부스지키미👀` (BOT_NAME), Issue 코멘트는 본문에 `**[기부스지키미👀💸]**` 프리픽스(볼드) (COMMENT_PREFIX) — 둘 다 `scripts/lib.py` 상수를 써라, 표기가 서로 다른 게 의도된 것이다
 - 새 알림 문구를 추가할 때는 이 유쾌한 "기술부채 갚기" 톤을 유지해라 (진지한 사무 톤으로 되돌리지 마라)
 
-## Projects 보드
+## Projects 보드 (제거됨)
 
-- https://github.com/users/korogoo/projects/8 (번호 8, project id `PVT_kwHOB4mJYs4Bd4Md`), 현재 private
-- `add-to-project` 워크플로우(issues opened/edited)가 `scripts/sync_project.py`를 실행해서: (1) 이슈를 보드에 추가하고 (2) 이슈 본문의 발표일을 "발표일" Date 필드(field id `PVTF_lAHOB4mJYs4Bd4MdzhYWe5k`)에 동기화한다. item-add는 이미 추가된 항목에 다시 호출해도 안전(idempotent)하다
-- `PROJECT_TOKEN` 시크릿(개인 gh 토큰, project 스코프)을 쓴다. 토큰을 로테이션하면 이 시크릿도 같이 갱신해라
-- GitHub Projects v2에는 "캘린더" 뷰가 따로 없다 — 발표일 Date 필드를 타임라인으로 보려면 보드에서 사람이 직접 "New view → Roadmap"으로 뷰를 하나 만들어야 한다 (CLI로 뷰 생성은 지원 안 됨). 이 저장소 문서에서 "캘린더"라고 쓰지 말고 "Roadmap/타임라인 뷰"라고 정확히 표현해라
+한때 Projects v2 보드(#8)와 `add-to-project`/`scripts/sync_project.py`, `PROJECT_TOKEN` 시크릿으로 발표일을 동기화했는데,
+"캘린더 뷰가 아니면 필요 없다"는 유저 판단으로 보드·워크플로우·시크릿을 전부 삭제했다.
+일정 확인은 README의 "발표 진행상황" 표와 디스코드 공지로 충분하다고 결론남 — 다시 만들자는 요청이 없으면 재도입하지 마라.
 
 ## 라벨
 

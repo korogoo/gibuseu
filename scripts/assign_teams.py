@@ -4,6 +4,8 @@
 발표 주기(3일)마다 한 번씩만 배정하면 되므로, 매일 실행되더라도
 마지막 배정일로부터 MIN_INTERVAL_DAYS가 안 지났으면 그냥 스킵한다.
 --force를 주면 주기와 상관없이 강제로 재배정한다.
+--date로 회차 날짜를 직접 지정할 수 있다 (다가올 회차를 미리 배정해서
+크루들에게 조를 일찍 공지하고 싶을 때). --date를 주면 주기 검사를 건너뛴다.
 """
 import argparse
 import random
@@ -66,13 +68,16 @@ def assign(names: list[str], last_teams: list[list[str]] | None) -> list[list[st
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="주기 무시하고 강제 재배정")
+    parser.add_argument("--date", type=str, default=None, help="회차 날짜 직접 지정 (YYYY-MM-DD), 주기 검사 생략")
     args = parser.parse_args()
+
+    round_date = date.fromisoformat(args.date) if args.date else date.today()
 
     names = load_members()
     history = load_history()
     last_round = history["rounds"][-1] if history["rounds"] else None
 
-    if last_round and not args.force:
+    if last_round and not args.force and not args.date:
         days_since = (date.today() - date.fromisoformat(last_round["date"])).days
         if days_since < MIN_INTERVAL_DAYS:
             print(
@@ -86,13 +91,13 @@ def main() -> None:
     round_no = (last_round["round"] + 1) if last_round else 1
 
     history["rounds"].append(
-        {"round": round_no, "date": date.today().isoformat(), "teams": teams}
+        {"round": round_no, "date": round_date.isoformat(), "teams": teams}
     )
     HISTORY_FILE.write_text(
         yaml.dump(history, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
 
-    print(f"이번 회차({format_date_kr(date.today())}) 조 편성 나왔습니다 😘🫰💸")
+    print(f"이번 회차({format_date_kr(round_date)}) 조 편성 나왔습니다 😘🫰💸")
     for i, team in enumerate(teams, start=1):
         print(f"{i}조: {', '.join(team)}")
 
