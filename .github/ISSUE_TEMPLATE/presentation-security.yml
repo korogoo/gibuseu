@@ -1,0 +1,64 @@
+name: "발표 등록 - 보안"
+description: "보안 분야 발표를 등록합니다. 제목에 발표 주제를 바로 적어주세요."
+labels: ["발표", "보안"]
+body:
+  - type: input
+    id: presenter
+    attributes:
+      label: 발표자
+      placeholder: 행성이
+    validations:
+      required: true
+
+  - type: input
+    id: date
+    attributes:
+      label: 발표일
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: subcategory
+    attributes:
+      label: 소분류
+      options:
+        - "인증 & 인가"
+        - "암호화 & OWASP"
+        - "기타"
+    validations:
+      required: true
+
+  - type: input
+    id: subcategory_other
+    attributes:
+      label: 소분류 - 직접 입력
+      description: 위에서 "기타"를 선택했다면 여기에 적어주세요
+    validations:
+      required: false
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: 유형
+      options:
+        - "이론 학습"
+        - "트러블슈팅"
+    validations:
+      required: true
+
+  - type: textarea
+    id: criteria
+    attributes:
+      label: 학습 완료기준
+      description: 이론 학습이면 다룰 개념과 어디까지 정리할지, 트러블슈팅이면 어떤 문제였고 어떻게 해결했는지 자유롭게 적어주세요.
+    validations:
+      required: false
+
+  - type: input
+    id: blog
+    attributes:
+      label: 블로그 링크
+      description: 발표 끝난 뒤 채워도 됩니다
+    validations:
+      required: false
