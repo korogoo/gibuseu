@@ -1,8 +1,8 @@
 # 기부스 스터디원 명단
 # name: 이름, blog: 블로그 URL (없으면 빈 문자열로 두고 나중에 채우기)
 members:
-  - name: ""
-    blog: ""
+  - name: "코로구"
+    blog: "https://korogoo.site"
   - name: ""
     blog: ""
   - name: ""
