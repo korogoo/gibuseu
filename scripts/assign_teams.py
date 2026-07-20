@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""8명의 스터디원을 3/3/2 팀으로 랜덤 배정하고 teams/history.yaml에 기록한다."""
+"""8명의 스터디원을 3/3/2 팀으로 랜덤 배정하고 teams/history.yaml에 기록한다.
+
+발표 주기(3일)마다 한 번씩만 배정하면 되므로, 매일 실행되더라도
+마지막 배정일로부터 MIN_INTERVAL_DAYS가 안 지났으면 그냥 스킵한다.
+--force를 주면 주기와 상관없이 강제로 재배정한다.
+"""
+import argparse
 import random
 import sys
 from datetime import date
@@ -12,6 +18,7 @@ MEMBERS_FILE = ROOT / "members.yaml"
 HISTORY_FILE = ROOT / "teams" / "history.yaml"
 TEAM_SIZES = [3, 3, 2]
 MAX_RETRY = 30
+MIN_INTERVAL_DAYS = 3
 
 
 def load_members() -> list[str]:
@@ -52,11 +59,24 @@ def assign(names: list[str], last_teams: list[list[str]] | None) -> list[list[st
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--force", action="store_true", help="주기 무시하고 강제 재배정")
+    args = parser.parse_args()
+
     names = load_members()
     history = load_history()
     last_round = history["rounds"][-1] if history["rounds"] else None
-    last_teams = last_round["teams"] if last_round else None
 
+    if last_round and not args.force:
+        days_since = (date.today() - date.fromisoformat(last_round["date"])).days
+        if days_since < MIN_INTERVAL_DAYS:
+            print(
+                f"마지막 배정({last_round['date']})으로부터 {days_since}일밖에 안 지나서 스킵 "
+                f"(주기: {MIN_INTERVAL_DAYS}일)"
+            )
+            return
+
+    last_teams = last_round["teams"] if last_round else None
     teams = assign(names, last_teams)
     round_no = (last_round["round"] + 1) if last_round else 1
 
