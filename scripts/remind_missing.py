@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-"""이번 회차에 발표 등록을 안 한 스터디원을 디스코드로 알려준다."""
+"""발표일 전날에만, 아직 발표 등록을 안 한 스터디원을 디스코드로 알려준다.
+
+워크플로우는 매일 09시/21시 두 번 실행되지만, 실제로 "발표 전날"이 아니면
+이 스크립트가 조용히 스킵한다. 즉 다음 발표일 전날에만 하루 두 번 알림이 나간다.
+"""
 import json
 import subprocess
+from datetime import date, timedelta
 from pathlib import Path
 
 import yaml
@@ -9,6 +14,7 @@ import yaml
 from lib import parse_sections, post_discord
 
 ROOT = Path(__file__).resolve().parent.parent
+INTERVAL_DAYS = 3  # assign_teams.py의 MIN_INTERVAL_DAYS와 동일해야 함
 
 
 def load_members() -> list[str]:
@@ -41,6 +47,12 @@ def main() -> None:
     since = latest_round_date()
     if since is None:
         print("아직 배정된 회차가 없어서 스킵")
+        return
+
+    next_presentation = date.fromisoformat(since) + timedelta(days=INTERVAL_DAYS)
+    day_before = next_presentation - timedelta(days=1)
+    if date.today() != day_before:
+        print(f"오늘은 발표 전날이 아님 (다음 발표일: {next_presentation.isoformat()}) — 스킵")
         return
 
     issues = [i for i in list_presentation_issues() if i["createdAt"][:10] >= since]

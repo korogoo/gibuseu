@@ -1,49 +1,26 @@
 # 기부스 (기술부채상환스터디)
 
 백엔드 실무/CS 지식을 발표로 정리하고, 프로젝트에서 겪은 트러블슈팅을 서로 공유하는 스터디입니다.
-스터디원 8명 전원이 각자 발표합니다. "조"는 같은 시간에 모여서 같이 듣고 발표하기 위한 스케줄링 단위일 뿐, 조당 1명만 발표하는 게 아닙니다.
 
 ## 운영 흐름
 
-1. **조 배정** — 발표 주기는 3일에 1번. `assign-teams`는 마지막 배정으로부터 3일이 안 지났으면 스킵하고, 3일이 지난 날에만 실제로 8명을 3/3/2 조로 랜덤 배정 (직전 회차와 동일 조합은 재시도). 배정이 실제로 일어난 날만 결과가 **디스코드에 자동 공지**됨. 급하게 주기 무시하고 재배정하려면 Actions 탭에서 `assign-teams` → `Run workflow` → `force` 체크
-   > ⚠️ 현재 `schedule` 트리거는 꺼져있음(수동 실행만 가능). 아직 스터디 그룹에 정식 공지 전이라 `DISCORD_WEBHOOK_URL`이 개인 테스트 채널로 걸려있고, 자동으로 3회차가 만들어지면 안 되기 때문. 실제 운영 시작하면 `.github/workflows/assign-teams.yml`의 `schedule` 주석을 풀고, `DISCORD_WEBHOOK_URL` 시크릿을 스터디 채널 웹훅으로 교체할 것
-2. **주제 확정** — 발표자가 New Issue에서 대분류에 맞는 템플릿(예: "발표 등록 - 데이터베이스")을 고르고, 제목에 발표 주제를 바로 적어서 등록 (조/소분류/유형/완료기준은 드롭다운·텍스트로 채움, CATEGORIES.md 참고할 필요 없음). 등록되면 자동으로:
-   - 대분류 라벨(`CS`/`데이터베이스`/... , 색상 지정됨) 부여
-   - `assign-author`가 작성자 본인을 assignee로 지정 (작성자가 레포 협업자여야 성공)
-   - `validate-presentation`이 발표일 형식/완료기준 줄 수/소분류-기타 누락을 검사, 문제 있으면 코멘트 + `형식 확인 필요` 라벨
-   - `add-to-project`가 [Projects 보드](https://github.com/users/korogoo/projects/8)에 자동 추가 (발표일은 Date 필드라 보드에서 캘린더로 볼 수 있음)
-3. **온라인 발표** — 디스코드에서 조원들이 각자 준비한 주제를 발표
-4. **기록** — 발표자가 정리한 내용을 각자 블로그에 올리고, 링크를 Issue 코멘트에 남긴 뒤 Issue를 닫음(완료 처리)
+- 3일에 1번, 온라인(디스코드)으로 발표
+- 매 발표마다 스터디원 8명을 2~3인 조로 랜덤 배정 (같이 듣는 스케줄링 단위 — 조당 한 명만 발표하는 게 아니라 전원 각자 발표)
+- 발표 등록·형식 검사·일정 관리는 GitHub Issues/Actions/Projects로 자동화되어 있음
 
-## 리마인더 (매일 자동 실행)
+발표 등록 방법과 등록 이후 자동으로 일어나는 일은 [`GUIDE.md`](./GUIDE.md) 참고.
 
-- `remind-missing` — 이번 회차 조 배정 이후 아직 발표 Issue를 안 올린 스터디원이 있으면 디스코드로 알림
-- `remind-overdue` — 발표일이 지났는데 아직 열려있는(블로그 링크 미기재) Issue에 코멘트 + `발표일 지남` 라벨 부여, 디스코드로도 알림 (한 Issue당 한 번만)
+> ⚠️ 현재 정식 운영 시작 전 상태입니다 (개인 테스트 웹훅 사용 중, 조 배정 자동 실행은 꺼둠). 자세한 내용은 [`CLAUDE.md`](./CLAUDE.md) 참고.
 
 ## 구조
 
-```
-members.yaml                              # 스터디원 명단
-CATEGORIES.md                             # 대분류/소분류/유형 정의 (Issue Form 드롭다운의 참고표)
-.github/ISSUE_TEMPLATE/presentation-*.yml # 대분류별 발표 등록 폼 (New Issue에서 사용)
-scripts/generate_issue_templates.py       # 위 템플릿들을 생성하는 스크립트 (카테고리 바뀌면 재실행)
-teams/history.yaml                        # 조 배정 이력 (자동 갱신)
-scripts/assign_teams.py                   # 랜덤 조 배정 스크립트
-.github/workflows/assign-teams.yml        # 조 배정 자동화 워크플로우
-.github/workflows/validate-presentation.yml # 발표 등록 Issue 형식 자동 검사 봇
-.github/workflows/assign-author.yml       # 작성자를 assignee로 자동 지정
-.github/workflows/add-to-project.yml      # 새 발표 Issue를 Projects 보드에 자동 추가
-.github/workflows/remind-missing.yml      # 미등록자 디스코드 리마인더 (매일)
-.github/workflows/remind-overdue.yml      # 발표일 지난 미완료 Issue 리마인더 (매일)
-scripts/lib.py                            # 리마인더 스크립트 공용 헬퍼 (Issue 본문 파싱, 디스코드 전송)
-```
-
-Discord 알림을 쓰려면 저장소 Settings → Secrets → `DISCORD_WEBHOOK_URL`이 등록돼 있어야 합니다 (이미 설정됨).
-
-## 조 랜덤 배정 수동/강제 실행 방법
-
-1. GitHub 저장소 → Actions 탭 → `assign-teams` 워크플로우 선택
-2. `Run workflow` 클릭 (3일 안 지났으면 강제로 하려는 게 아닌 이상 `force` 체크 안 해도 됨 — 매일 자동으로도 돌아감)
-3. `teams/history.yaml`에 새 회차 배정 결과가 자동 커밋됨
-
-> 1회차(2026-07-16, 4명)·2회차(2026-07-19, 8명 3/3/2)는 자동화 세팅 전 실제 진행된 회차라 `teams/history.yaml`에 수기로 넣어뒀습니다. 이 회차들엔 대응하는 Issue가 없어서, `remind-missing`이 3회차가 시작되기 전까지는 등록자 파악이 정확하지 않을 수 있습니다 — 정상입니다. schedule을 다시 켜고 3회차부터는 정확해집니다.
+| 파일/경로 | 설명 |
+|---|---|
+| [`GUIDE.md`](./GUIDE.md) | 스터디원용 — 발표 등록 방법, 자동화 동작, 리마인더 안내 |
+| [`CATEGORIES.md`](./CATEGORIES.md) | 발표 대분류/소분류/유형 정의 |
+| [`members.yaml`](./members.yaml) | 스터디원 명단 |
+| [`teams/history.yaml`](./teams/history.yaml) | 회차별 조 배정 이력 |
+| [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE) | 대분류별 발표 등록 폼 |
+| [`scripts/`](./scripts) | 조 배정·리마인더·Issue Form 생성 스크립트 |
+| [`.github/workflows/`](./.github/workflows) | 조 배정·형식 검사·assignee 지정·Projects 연동·리마인더 자동화 |
+| [Projects 보드](https://github.com/users/korogoo/projects/8) | 발표 일정 (발표일 기준 캘린더 뷰 가능) |

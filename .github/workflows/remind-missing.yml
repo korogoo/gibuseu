@@ -2,7 +2,8 @@ name: remind-missing
 
 on:
   schedule:
-    - cron: "0 0 * * *" # 매일 09:00 KST
+    - cron: "0 0 * * *"  # 09:00 KST — 발표 전날에만 실제로 알림 나감(스크립트가 판단)
+    - cron: "0 12 * * *" # 21:00 KST
   workflow_dispatch: {}
 
 permissions:
