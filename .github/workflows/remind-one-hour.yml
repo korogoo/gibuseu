@@ -3,6 +3,8 @@ name: remind-one-hour
 on:
   schedule:
     - cron: "*/15 * * * *" # 15분마다 확인, 목표 시각 1시간 전을 지난 발표만 알림
+  issues:
+    types: [opened, edited] # 등록/수정 직후 목표시각이 이미 1시간 이내로 임박했으면 폴링을 안 기다리고 바로 잡음
   workflow_dispatch: {}
 
 permissions:
