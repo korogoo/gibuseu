@@ -8,7 +8,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  issues: write
+  contents: write
 
 jobs:
   remind:
@@ -23,3 +23,19 @@ jobs:
           python-version: "3.12"
       - run: pip install requests
       - run: python scripts/remind_one_hour.py
+      - name: Commit reminded state
+        run: |
+          git config user.name "gibuseu-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add state/reminded_one_hour.json || true
+          if git diff --cached --quiet; then
+            echo "no changes"
+          else
+            git commit -m "chore: 1시간전알림 상태 갱신"
+            for i in 1 2 3 4 5; do
+              git push && break
+              git fetch origin
+              git rebase origin/master
+              sleep $((RANDOM % 4 + 1))
+            done
+          fi

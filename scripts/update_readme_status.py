@@ -9,13 +9,12 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
-from lib import parse_sections
+from lib import CATEGORY_LABELS, parse_sections
 
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
 START = "<!-- STATUS:START -->"
 END = "<!-- STATUS:END -->"
-CATEGORY_LABELS = {"CS", "데이터베이스", "인프라/DevOps", "아키텍처", "보안", "테스트/QA", "AI"}
 WEEKDAYS_KO = ["월", "화", "수", "목", "금", "토", "일"]
 
 

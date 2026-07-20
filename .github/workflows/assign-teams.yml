@@ -39,7 +39,12 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "chore: 팀 배정 결과 갱신"
-            git push
+            for i in 1 2 3 4 5; do
+              git push && break
+              git fetch origin
+              git rebase origin/master
+              sleep $((RANDOM % 4 + 1))
+            done
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 

@@ -3,12 +3,16 @@
 
 - 발표자 이름이 members.yaml에 있는지
 - 발표일이 YYYY-MM-DD 형식인지
+- 발표 시간이 HH:MM 형식인지
 - 소분류가 '기타'인데 직접입력이 비어있지 않은지
 - 학습 완료기준이 '-'로 시작하는 줄 2개 이상인지
 - 블로그 링크가 URL 형식인지 (입력했다면)
 문제가 있으면 코멘트를 남기고 '형식 확인 필요' 라벨을 붙인다.
 문제가 없으면 그 라벨을 떼고, teams/history.yaml의 최신 회차에서 발표자를 찾아
 해당 조 라벨(1조/2조/3조)을 자동으로 붙인다.
+
+문제가 없는 새 이슈는 디스코드에 발표 주제를 공지한다 (state/announced.json으로
+중복 방지). 이미 공지된 이슈가 수정(edited)되면 가벼운 "수정됨" 알림을 보낸다.
 """
 import json
 import os
@@ -18,10 +22,11 @@ from pathlib import Path
 
 import yaml
 
-from lib import COMMENT_PREFIX, parse_sections
+from lib import CATEGORY_LABELS, COMMENT_PREFIX, load_state_set, parse_sections, post_discord, save_state_set
 
 ROOT = Path(__file__).resolve().parent.parent
 NEEDS_FIX_LABEL = "형식 확인 필요"
+ANNOUNCED_FILE = ROOT / "state" / "announced.json"
 
 
 def gh(*args) -> None:
@@ -57,7 +62,8 @@ def is_blank(value: str) -> bool:
 
 def main() -> None:
     number = os.environ["ISSUE_NUMBER"]
-    issue = gh_json("issue", "view", number, "--json", "body,labels")
+    action = os.environ.get("ISSUE_ACTION", "opened")
+    issue = gh_json("issue", "view", number, "--json", "title,url,body,labels")
     sections = parse_sections(issue["body"])
     label_names = {l["name"] for l in issue["labels"]}
     errors = []
@@ -104,8 +110,25 @@ def main() -> None:
         gh("issue", "comment", number, "--body", body)
         if not has_fix_label:
             gh("issue", "edit", number, "--add-label", NEEDS_FIX_LABEL)
-    elif has_fix_label:
+        return
+
+    if has_fix_label:
         gh("issue", "edit", number, "--remove-label", NEEDS_FIX_LABEL)
+
+    category = next((l for l in label_names if l in CATEGORY_LABELS), "?")
+    field = f"{category} / {subcategory}" if subcategory else category
+    announced = load_state_set(ANNOUNCED_FILE)
+    issue_number = int(number)
+
+    if issue_number not in announced:
+        post_discord(
+            f"📢 **새 발표 등록!** [{field}] {issue['title']}\n"
+            f"발표자: {presenter} · {presentation_date} {presentation_time}\n"
+            f"{issue['url']}"
+        )
+        save_state_set(ANNOUNCED_FILE, announced | {issue_number})
+    elif action == "edited":
+        post_discord(f"✏️ **발표 정보 수정됨**: {issue['title']} ({presenter})\n{issue['url']}")
 
 
 if __name__ == "__main__":

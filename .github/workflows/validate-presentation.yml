@@ -6,13 +6,16 @@ on:
 
 permissions:
   issues: write
+  contents: write
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
+      ISSUE_ACTION: ${{ github.event.action }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,3 +23,19 @@ jobs:
           python-version: "3.12"
       - run: pip install pyyaml requests
       - run: python scripts/validate_presentation.py
+      - name: Commit announced state
+        run: |
+          git config user.name "gibuseu-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add state/announced.json || true
+          if git diff --cached --quiet; then
+            echo "no changes"
+          else
+            git commit -m "chore: 발표 공지 상태 갱신"
+            for i in 1 2 3 4 5; do
+              git push && break
+              git fetch origin
+              git rebase origin/master
+              sleep $((RANDOM % 4 + 1))
+            done
+          fi

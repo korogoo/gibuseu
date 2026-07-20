@@ -1,11 +1,14 @@
 """리마인더 스크립트들이 공유하는 헬퍼."""
+import json
 import os
 import re
+from pathlib import Path
 
 import requests
 
 BOT_NAME = "기부스지키미👀"
 COMMENT_PREFIX = "**[기부스지키미👀💸]**"
+CATEGORY_LABELS = {"CS", "데이터베이스", "인프라/DevOps", "아키텍처", "보안", "테스트/QA", "AI"}
 
 
 def parse_sections(body: str) -> dict:
@@ -26,3 +29,16 @@ def post_discord(content: str) -> None:
         return
     resp = requests.post(url, json={"content": content, "username": BOT_NAME}, timeout=10)
     resp.raise_for_status()
+
+
+def load_state_set(path: Path) -> set[int]:
+    """중복 알림 방지용 상태 파일(이슈 번호 목록)을 읽는다. 라벨 대신 이걸 쓴다 —
+    이슈에 내부용 라벨이 보이는 걸 원치 않는다는 운영 방침."""
+    if not path.exists():
+        return set()
+    return set(json.loads(path.read_text(encoding="utf-8")))
+
+
+def save_state_set(path: Path, values: set[int]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(sorted(values)), encoding="utf-8")
