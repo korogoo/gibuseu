@@ -16,11 +16,7 @@
 
 <!-- STATUS:START -->
 
-### not-a-date
-
-| 닉네임 | 발표 제목 | 분야/소분야 | 블로그 |
-|---|---|---|---|
-| test-typo2 | test | CS / 기타 | [링크](not-a-url) |
+_아직 등록된 발표가 없습니다._
 
 <!-- STATUS:END -->
 

@@ -2,7 +2,8 @@ name: update-readme
 
 on:
   issues:
-    types: [opened, edited, closed, reopened]
+    types: [opened, edited, closed, reopened, deleted]
+  workflow_dispatch: {}
 
 permissions:
   contents: write
