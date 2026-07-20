@@ -8,8 +8,9 @@
 - 학습 완료기준이 '-'로 시작하는 줄 2개 이상인지
 - 블로그 링크가 URL 형식인지 (입력했다면)
 문제가 있으면 코멘트를 남기고 '형식 확인 필요' 라벨을 붙인다.
-문제가 없으면 그 라벨을 떼고, teams/history.yaml의 최신 회차에서 발표자를 찾아
-해당 조 라벨(1조/2조/3조)을 자동으로 붙인다.
+문제가 없으면 그 라벨을 떼고, teams/history.yaml에서 이슈의 발표일과 날짜가
+일치하는 회차(없으면 최신 회차)를 찾아 발표자의 조 라벨(1조/2조/3조)을
+자동으로 붙인다. 다른 회차의 조 라벨이 잘못 남아있으면 같이 정리한다.
 
 문제가 없는 새 이슈는 디스코드에 발표 주제를 공지한다 (state/announced.json으로
 중복 방지). 이미 공지된 이슈가 수정(edited)되면 가벼운 "수정됨" 알림을 보낸다.
@@ -27,6 +28,7 @@ from lib import CATEGORY_LABELS, COMMENT_PREFIX, load_state_set, parse_sections,
 ROOT = Path(__file__).resolve().parent.parent
 NEEDS_FIX_LABEL = "형식 확인 필요"
 ANNOUNCED_FILE = ROOT / "state" / "announced.json"
+TEAM_LABEL_RE = re.compile(r"^[1-9]\d*조$")
 
 
 def gh(*args) -> None:
@@ -43,14 +45,17 @@ def load_members() -> list[str]:
     return [m["name"] for m in data.get("members", []) if m.get("name")]
 
 
-def latest_round_teams() -> list[list[str]] | None:
+def load_rounds() -> list[dict]:
     data = yaml.safe_load((ROOT / "teams" / "history.yaml").read_text(encoding="utf-8")) or {}
-    rounds = data.get("rounds") or []
-    return rounds[-1]["teams"] if rounds else None
+    return data.get("rounds") or []
 
 
-def find_team_label(presenter: str, teams: list[list[str]]) -> str | None:
-    for i, team in enumerate(teams, start=1):
+def find_team_label(presenter: str, presentation_date: str, rounds: list[dict]) -> str | None:
+    """발표일과 날짜가 일치하는 회차를 우선 쓰고, 없으면 최신 회차로 매칭한다."""
+    target = next((r for r in rounds if r["date"] == presentation_date), None) or (rounds[-1] if rounds else None)
+    if not target:
+        return None
+    for i, team in enumerate(target["teams"], start=1):
         if presenter in team:
             return f"{i}조"
     return None
@@ -96,13 +101,16 @@ def main() -> None:
         errors.append(f"블로그 링크는 URL 형식으로 작성해주세요. (입력값: {blog})")
 
     if presenter in members:
-        teams = latest_round_teams()
-        team_label = find_team_label(presenter, teams) if teams else None
+        rounds = load_rounds()
+        team_label = find_team_label(presenter, presentation_date, rounds)
         if team_label:
+            stale_labels = {l for l in label_names if TEAM_LABEL_RE.match(l) and l != team_label}
+            for stale in stale_labels:
+                gh("issue", "edit", number, "--remove-label", stale)
             if team_label not in label_names:
                 gh("issue", "edit", number, "--add-label", team_label)
         else:
-            errors.append("이번 회차 조 배정에서 발표자를 찾지 못했어요. 이름을 다시 확인해주세요.")
+            errors.append("해당 발표일의 조 배정에서 발표자를 찾지 못했어요. 이름을 다시 확인해주세요.")
 
     has_fix_label = NEEDS_FIX_LABEL in label_names
     if errors:
