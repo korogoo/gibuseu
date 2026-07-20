@@ -32,7 +32,6 @@ def list_presentation_issues() -> list[dict]:
     out = subprocess.run(
         [
             "gh", "issue", "list",
-            "--label", "발표",
             "--state", "all",
             "--json", "number,body,createdAt",
             "--limit", "200",

@@ -5,6 +5,9 @@ GitHub Issue Form은 '대분류 선택에 따라 소분류 옵션이 바뀌는' 
 지원하지 않는다. 그래서 대분류마다 템플릿을 따로 만들어 New Issue에서
 템플릿을 고르는 것 자체가 대분류 선택이 되도록 한다. CATEGORIES.md를 고치면
 이 스크립트를 다시 실행해서 템플릿을 갱신한다.
+
+'조'는 폼에서 직접 고르지 않는다 — scripts/validate_presentation.py가 발표자 이름을
+teams/history.yaml의 최신 회차와 매칭해서 자동으로 라벨(1조/2조/3조)을 붙인다.
 """
 from pathlib import Path
 
@@ -27,12 +30,13 @@ def render(category: str, subcategories: list[str]) -> str:
     sub_options = "\n".join(f'        - "{s}"' for s in subcategories)
     return f"""name: "발표 등록 - {category}"
 description: "{category} 분야 발표를 등록합니다. 제목에 발표 주제를 바로 적어주세요."
-labels: ["발표", "{category}"]
+labels: ["{category}"]
 body:
   - type: input
     id: presenter
     attributes:
       label: 발표자
+      description: members.yaml에 등록된 이름/닉네임과 정확히 같아야 합니다
       placeholder: 행성이
     validations:
       required: true
@@ -42,18 +46,6 @@ body:
     attributes:
       label: 발표일
       placeholder: "YYYY-MM-DD"
-    validations:
-      required: true
-
-  - type: dropdown
-    id: team
-    attributes:
-      label: 조
-      description: teams/history.yaml의 최근 회차 배정 결과에서 본인이 속한 조를 골라주세요
-      options:
-        - "1조"
-        - "2조"
-        - "3조"
     validations:
       required: true
 

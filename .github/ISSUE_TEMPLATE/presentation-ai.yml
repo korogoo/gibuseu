@@ -1,11 +1,12 @@
 name: "발표 등록 - AI"
 description: "AI 분야 발표를 등록합니다. 제목에 발표 주제를 바로 적어주세요."
-labels: ["발표", "AI"]
+labels: ["AI"]
 body:
   - type: input
     id: presenter
     attributes:
       label: 발표자
+      description: members.yaml에 등록된 이름/닉네임과 정확히 같아야 합니다
       placeholder: 행성이
     validations:
       required: true
@@ -15,18 +16,6 @@ body:
     attributes:
       label: 발표일
       placeholder: "YYYY-MM-DD"
-    validations:
-      required: true
-
-  - type: dropdown
-    id: team
-    attributes:
-      label: 조
-      description: teams/history.yaml의 최근 회차 배정 결과에서 본인이 속한 조를 골라주세요
-      options:
-        - "1조"
-        - "2조"
-        - "3조"
     validations:
       required: true
 

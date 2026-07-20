@@ -6,7 +6,6 @@ on:
 
 jobs:
   add:
-    if: contains(github.event.issue.labels.*.name, '발표')
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}

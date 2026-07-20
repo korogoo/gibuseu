@@ -8,7 +8,7 @@ import json
 import subprocess
 from datetime import date
 
-from lib import parse_sections, post_discord
+from lib import BOT_NAME, parse_sections, post_discord
 
 OVERDUE_LABEL = "발표일 지남"
 
@@ -17,7 +17,6 @@ def list_open_presentation_issues() -> list[dict]:
     out = subprocess.run(
         [
             "gh", "issue", "list",
-            "--label", "발표",
             "--state", "open",
             "--json", "number,url,body,labels",
             "--limit", "200",
@@ -43,7 +42,7 @@ def main() -> None:
 
         subprocess.run(
             ["gh", "issue", "comment", number,
-             "--body", "발표일이 지났어요. 블로그 링크 남기고 이슈를 닫아주세요!"],
+             "--body", f"**{BOT_NAME}**\n\n발표일이 지났어요. 블로그 링크 남기고 이슈를 닫아주세요!"],
             check=True,
         )
         overdue.append(issue["url"])
