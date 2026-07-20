@@ -20,7 +20,7 @@
 
 | 닉네임 | 발표 제목 | 분야/소분야 | 블로그 |
 |---|---|---|---|
-| test-typo | test | CS / 기타 | [링크](not-a-url) |
+| test-typo2 | test | CS / 기타 | [링크](not-a-url) |
 
 <!-- STATUS:END -->
 
