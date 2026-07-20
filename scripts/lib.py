@@ -4,8 +4,8 @@ import re
 
 import requests
 
-BOT_NAME = "기부스지킴이👀"
-COMMENT_PREFIX = "[기부스지킴이👀💸]"
+BOT_NAME = "기부스지키미👀"
+COMMENT_PREFIX = "**[기부스지키미👀💸]**"
 
 
 def parse_sections(body: str) -> dict:
