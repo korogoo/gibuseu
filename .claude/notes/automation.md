@@ -28,9 +28,10 @@
 
 ## Projects 보드
 
-- https://github.com/users/korogoo/projects/8 (번호 8)
-- `add-to-project` 워크플로우가 모든 새 Issue를 자동으로 추가한다 (blank issue를 막아뒀으므로 라벨 조건 없이 전부 추가해도 안전하다)
+- https://github.com/users/korogoo/projects/8 (번호 8, project id `PVT_kwHOB4mJYs4Bd4Md`), 현재 private
+- `add-to-project` 워크플로우(issues opened/edited)가 `scripts/sync_project.py`를 실행해서: (1) 이슈를 보드에 추가하고 (2) 이슈 본문의 발표일을 "발표일" Date 필드(field id `PVTF_lAHOB4mJYs4Bd4MdzhYWe5k`)에 동기화한다. item-add는 이미 추가된 항목에 다시 호출해도 안전(idempotent)하다
 - `PROJECT_TOKEN` 시크릿(개인 gh 토큰, project 스코프)을 쓴다. 토큰을 로테이션하면 이 시크릿도 같이 갱신해라
+- GitHub Projects v2에는 "캘린더" 뷰가 따로 없다 — 발표일 Date 필드를 타임라인으로 보려면 보드에서 사람이 직접 "New view → Roadmap"으로 뷰를 하나 만들어야 한다 (CLI로 뷰 생성은 지원 안 됨). 이 저장소 문서에서 "캘린더"라고 쓰지 말고 "Roadmap/타임라인 뷰"라고 정확히 표현해라
 
 ## 라벨
 

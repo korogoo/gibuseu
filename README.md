@@ -37,4 +37,4 @@
 | [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE) | 대분류별 발표 등록 폼 |
 | [`scripts/`](./scripts) | 조 배정·리마인더·Issue Form 생성 스크립트 |
 | [`.github/workflows/`](./.github/workflows) | 조 배정·형식 검사·assignee 지정·Projects 연동·리마인더·README 진행상황 자동화 |
-| [Projects 보드](https://github.com/users/korogoo/projects/8) | 발표 일정 (발표일 기준 캘린더 뷰 가능) |
+| [Projects 보드](https://github.com/users/korogoo/projects/8) | 발표 일정. 발표일이 Date 필드로 자동 동기화되어, 보드에서 "New view → Roadmap"으로 타임라인 뷰를 만들면 일정을 볼 수 있음(이 뷰는 수동으로 한 번 만들어야 함) |

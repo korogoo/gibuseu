@@ -2,12 +2,18 @@ name: add-to-project
 
 on:
   issues:
-    types: [opened]
+    types: [opened, edited]
 
 jobs:
   add:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
     steps:
-      - run: gh project item-add 8 --owner korogoo --url "${{ github.event.issue.html_url }}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python scripts/sync_project.py
