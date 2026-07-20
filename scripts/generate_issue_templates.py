@@ -46,6 +46,18 @@ body:
       required: true
 
   - type: dropdown
+    id: team
+    attributes:
+      label: 조
+      description: teams/history.yaml의 최근 회차 배정 결과에서 본인이 속한 조를 골라주세요
+      options:
+        - "1조"
+        - "2조"
+        - "3조"
+    validations:
+      required: true
+
+  - type: dropdown
     id: subcategory
     attributes:
       label: 소분류
