@@ -71,6 +71,10 @@ def main() -> None:
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", presentation_date):
         errors.append(f"발표 형식은 YYYY-MM-DD 로 작성해주세요. (입력값: {presentation_date})")
 
+    presentation_time = sections.get("발표 시간", "").strip()
+    if not re.fullmatch(r"\d{2}:\d{2}", presentation_time):
+        errors.append(f"발표 시간은 HH:MM 형식으로 작성해주세요. (입력값: {presentation_time})")
+
     subcategory = sections.get("소분류", "").strip()
     subcategory_other = sections.get("소분류 - 직접 입력", "").strip()
     if subcategory == "기타" and is_blank(subcategory_other):

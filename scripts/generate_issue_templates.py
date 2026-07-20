@@ -49,6 +49,15 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: time
+    attributes:
+      label: 발표 시간
+      description: 회차마다 시간이 다를 수 있으니 정확히 적어주세요. 1시간 전에 자동으로 디스코드 알림이 갑니다
+      placeholder: "20:00"
+    validations:
+      required: true
+
   - type: dropdown
     id: subcategory
     attributes:

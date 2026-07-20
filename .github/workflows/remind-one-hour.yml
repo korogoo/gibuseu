@@ -1,0 +1,23 @@
+name: remind-one-hour
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # 15분마다 확인, 목표 시각 1시간 전을 지난 발표만 알림
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python scripts/remind_one_hour.py

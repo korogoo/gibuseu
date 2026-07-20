@@ -59,8 +59,10 @@ def build_table() -> str:
         blog = sections.get("블로그 링크", "").strip()
         blog_cell = f"[링크]({blog})" if not is_blank(blog) else "-"
 
+        time_cell = sections.get("발표 시간", "").strip() or "-"
+
         by_date.setdefault(presentation_date, []).append(
-            {"presenter": presenter, "title": issue["title"], "field": field, "blog": blog_cell}
+            {"presenter": presenter, "time": time_cell, "title": issue["title"], "field": field, "blog": blog_cell}
         )
 
     if not by_date:
@@ -73,13 +75,13 @@ def build_table() -> str:
     for d in sorted(by_date, key=sort_key):
         header = d if d == "날짜 미정" else format_date(d)
         rows = "\n".join(
-            f"| {r['presenter']} | {r['title']} | {r['field']} | {r['blog']} |"
+            f"| {r['presenter']} | {r['time']} | {r['title']} | {r['field']} | {r['blog']} |"
             for r in by_date[d]
         )
         blocks.append(
             f"### {header}\n\n"
-            "| 닉네임 | 발표 제목 | 분야/소분야 | 블로그 |\n"
-            "|---|---|---|---|\n"
+            "| 닉네임 | 시간 | 발표 제목 | 분야/소분야 | 블로그 |\n"
+            "|---|---|---|---|---|\n"
             f"{rows}"
         )
     return "\n\n".join(blocks)
