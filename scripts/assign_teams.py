@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""제출된 발표 주제의 연관성(소분류 → 대분류)을 기준으로 2~3인 팀을 배정하고
-teams/history.yaml에 기록한다. 배정과 동시에 해당 회차 이슈들에 조 라벨(1조/2조/3조)을 붙인다.
+"""제출된 발표 주제의 연관성(소분류 → 대분류 → 완료기준 키워드)을 기준으로 2~3인 팀을
+배정하고 teams/history.yaml에 기록한다. 배정과 동시에 해당 회차 이슈들에 조 라벨(1조/2조/3조)을
+붙이고, 왜 그렇게 묶었는지와 조별 발표 주제 링크를 담은 디스코드 공지 문구를 stdout에 출력한다.
 
 플로우: D-2 자정까지 주제 제출 → D-1에 이 스크립트가 연관성 기준으로 팀 배정 → D-day 발표.
 그래서 이 스크립트는 "회차 날짜"를 직접 만들어내지 않고, 다음 회차 날짜(마지막 회차 +
@@ -17,6 +18,8 @@ import random
 import re
 import subprocess
 import sys
+from collections import Counter
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -31,6 +34,33 @@ TEAM_SIZES = [3, 3, 2]
 INTERVAL_DAYS = 4
 WEEKDAYS_KO = ["월", "화", "수", "목", "금", "토", "일"]
 TEAM_LABEL_RE = re.compile(r"^[1-9]\d*조$")
+WORD_RE = re.compile(r"[A-Za-z가-힣]{2,}")
+
+# 완료기준 문장에서 내용과 상관없이 반복되는 서술어/접속사류. 도메인 키워드가 아니라
+# 글쓰기 템플릿("~를 설명할 수 있다", "~를 이해한다" 등)에서 나오는 단어라 필터링한다.
+STOPWORDS = {
+    "있다", "없이", "그리고", "이를", "위해", "통해", "대해", "대한",
+    "무엇을", "무엇이", "무엇이며", "무엇인가", "무엇이고", "어떤", "어느", "각각", "가지",
+    "경우", "시간이", "시작", "진행", "확인", "확인하고", "목표", "방법", "결과", "문제",
+    "필요성", "비교", "전체", "전체에서", "영역", "핵심", "답할", "코드나", "그림",
+    "말로만", "질문에", "예상", "예시와", "함께", "설명할", "이해한다", "알아본다",
+    "학습", "개념", "개념을", "되는", "되는지", "하는지", "하는가", "사라지는지",
+    "차단하는지로", "허용", "이상", "현상", "현상을", "높아질수록", "사용하는",
+    "사용하는지", "사용해도", "시작하는", "자체가", "이유를", "해야", "만들", "좋을까",
+    "작성하면", "제공해야", "자신의", "노출되기", "상단에", "글을", "글이", "구분하기",
+    "구분해", "목적", "무너지는가", "믹스", "선정", "재현", "지점", "지점들", "측정과",
+    "치솟기", "특징", "환경", "읽는", "차이", "쓰는지", "통합했는지", "성능", "비교표로",
+    "성능향상설계", "전에", "전후의", "체크리스트를", "충분할", "시간",
+}
+
+
+@dataclass
+class Topic:
+    category: str
+    subcategory: str
+    title: str
+    url: str
+    keywords: frozenset[str] = field(default_factory=frozenset)
 
 
 def gh(*args) -> None:
@@ -60,13 +90,32 @@ def load_history() -> dict:
     return data
 
 
-def load_topics(round_date: str) -> dict[str, tuple[str, str]]:
-    """round_date에 발표하기로 등록된 이슈들에서 {발표자: (대분류, 소분류)}를 읽는다."""
+def extract_words(text: str) -> set[str]:
+    return {w.lower() for w in WORD_RE.findall(text or "") if w.lower() not in STOPWORDS}
+
+
+def keywords_by_presenter(raw_words: dict[str, set[str]]) -> dict[str, frozenset[str]]:
+    """모든 사람 완료기준에 다 나오는 흔한 단어(설명한다/이해한다류)는 제거하고,
+    절반 이하 인원에게만 나오는 단어만 '내용을 드러내는 키워드'로 남긴다. 별도
+    금지어 목록을 유지하는 대신 이슈 등록 시마다 자동으로 계산되게 하기 위함."""
+    doc_freq = Counter()
+    for words in raw_words.values():
+        doc_freq.update(words)
+    limit = max(1, len(raw_words) // 2)
+    return {
+        name: frozenset(w for w in words if doc_freq[w] <= limit)
+        for name, words in raw_words.items()
+    }
+
+
+def load_topics(round_date: str) -> dict[str, Topic]:
+    """round_date에 발표하기로 등록된 이슈들에서 {발표자: Topic}을 읽는다."""
     issues = gh_json(
         "issue", "list", "--state", "open",
-        "--json", "number,body,labels", "--limit", "200",
+        "--json", "number,title,url,body,labels", "--limit", "200",
     )
-    topics: dict[str, tuple[str, str]] = {}
+    partial: dict[str, Topic] = {}
+    raw_words: dict[str, set[str]] = {}
     for issue in issues:
         sections = parse_sections(issue["body"])
         if date_part(sections.get("발표일", "")) != round_date:
@@ -80,19 +129,24 @@ def load_topics(round_date: str) -> dict[str, tuple[str, str]]:
         subcategory_other = sections.get("소분류 - 직접 입력", "").strip()
         if subcategory == "기타" and subcategory_other and subcategory_other != "_No response_":
             subcategory = subcategory_other
-        topics[presenter] = (category, subcategory)
-    return topics
+        partial[presenter] = Topic(category, subcategory, issue["title"], issue["url"])
+        raw_words[presenter] = extract_words(subcategory) | extract_words(sections.get("학습 완료기준", ""))
+
+    keywords = keywords_by_presenter(raw_words)
+    for presenter, topic in partial.items():
+        topic.keywords = keywords.get(presenter, frozenset())
+    return partial
 
 
-def group_by_relevance(names: list[str], topics: dict[str, tuple[str, str]]) -> list[list[str]]:
+def group_by_relevance(names: list[str], topics: dict[str, Topic]) -> list[list[str]]:
     """제출된 주제의 (대분류, 소분류)가 가까운 사람끼리 우선 묶어서 3/3/2 팀으로 나눈다.
     주제를 제출하지 않은 사람(마감 엄수)은 뒤로 보내 가장 작은 조에 강제 편입한다."""
     submitted = [n for n in names if n in topics]
     missing = [n for n in names if n not in topics]
 
     def sort_key(name: str) -> tuple[str, str, float]:
-        category, subcategory = topics[name]
-        return (category, subcategory, random.random())
+        topic = topics[name]
+        return (topic.category, topic.subcategory, random.random())
 
     submitted.sort(key=sort_key)
 
@@ -135,6 +189,57 @@ def apply_team_labels(round_date: str, teams: list[list[str]]) -> None:
             gh("issue", "edit", str(issue["number"]), "--add-label", team_label)
 
 
+def common_field_label(team: list[str], topics: dict[str, Topic]) -> str:
+    categories = [topics[n].category for n in team if n in topics]
+    if not categories:
+        return "미제출"
+    counts = Counter(categories)
+    ordered = sorted(set(categories), key=lambda c: (-counts[c], categories.index(c)))
+    return "·".join(ordered)
+
+
+def explain_team(team: list[str], topics: dict[str, Topic]) -> str:
+    present = [n for n in team if n in topics]
+    if len(present) < len(team):
+        return "주제 미제출자가 있어 가장 작은 조에 편입했어요"
+    subs = {topics[n].subcategory for n in present}
+    cats = {topics[n].category for n in present}
+    if len(subs) == 1:
+        return f"모두 '{next(iter(subs))}' 주제라 묶었어요"
+    if len(cats) == 1:
+        return f"모두 {next(iter(cats))} 분야라 묶었어요"
+
+    keyword_counts = Counter()
+    for n in present:
+        keyword_counts.update(topics[n].keywords)
+    shared = sorted((w for w, c in keyword_counts.items() if c >= 2), key=lambda w: -keyword_counts[w])
+    if shared:
+        return f"서로 다른 분야지만 '{', '.join(shared[:2])}' 키워드가 겹쳐서 묶었어요"
+    return "카테고리가 인접해서 묶었어요"
+
+
+def build_announcement(round_date: date, teams: list[list[str]], topics: dict[str, Topic]) -> str:
+    lines = [f"😘🫰💸 이번 회차({format_date_kr(round_date)}) 조 편성 나왔습니다", ""]
+    for i, team in enumerate(teams, start=1):
+        lines.append(f"**{i}조 ({common_field_label(team, topics)})**: {', '.join(team)}")
+
+    lines += ["", "**왜 이렇게 묶었나요?**"]
+    for i, team in enumerate(teams, start=1):
+        lines.append(f"- {i}조: {explain_team(team, topics)}")
+
+    lines += ["", "📎 **조별 발표 주제**"]
+    for i, team in enumerate(teams, start=1):
+        lines.append(f"**{i}조**")
+        for n in team:
+            topic = topics.get(n)
+            if topic:
+                lines.append(f"- {n}: [{topic.title}]({topic.url})")
+            else:
+                lines.append(f"- {n}: (주제 미제출)")
+
+    return "\n".join(lines)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="D-1 여부 검사 없이 강제 배정")
@@ -174,9 +279,7 @@ def main() -> None:
     )
     apply_team_labels(round_date.isoformat(), teams)
 
-    print(f"이번 회차({format_date_kr(round_date)}) 조 편성 나왔습니다 😘🫰💸")
-    for i, team in enumerate(teams, start=1):
-        print(f"{i}조: {', '.join(team)}")
+    print(build_announcement(round_date, teams, topics))
 
 
 if __name__ == "__main__":
