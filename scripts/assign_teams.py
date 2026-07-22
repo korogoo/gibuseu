@@ -220,8 +220,9 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
     }
     prompt = (
         "아래는 스터디원들이 이번 회차에 제출한 발표 주제와 완료기준이다. "
-        "내용상 서로 연관된 사람끼리 2~3명씩 팀으로 묶어라. "
-        f"전체 {len(submitted)}명을 빠짐없이 배정하고, 팀 크기는 2 또는 3만 써라.\n\n"
+        "내용상 서로 연관된 사람끼리 팀으로 묶어라. "
+        f"전체 {len(submitted)}명을 빠짐없이 배정하고, 정확히 3개 팀으로 나누되 "
+        "팀 크기는 2 또는 3만 써라(예: 8명이면 3/3/2).\n\n"
         f"{profile}\n\n"
         "각 팀마다 왜 그렇게 묶었는지 한국어로 한 문장씩, 구체적인 키워드나 분야를 언급해서 써라."
     )
@@ -243,7 +244,12 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
 
     teams = data.get("teams", [])
     all_members = [m for t in teams for m in t.get("members", [])]
-    if sorted(all_members) != sorted(submitted) or any(len(t.get("members", [])) not in (2, 3) for t in teams):
+    valid = (
+        len(teams) == 3
+        and sorted(all_members) == sorted(submitted)
+        and all(len(t.get("members", [])) in (2, 3) for t in teams)
+    )
+    if not valid:
         print(
             "OpenAI 응답이 인원 검증에 실패해서 규칙 기반으로 대체 — "
             f"제출자: {sorted(submitted)} / 응답: {[t.get('members') for t in teams]}",
