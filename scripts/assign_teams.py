@@ -241,7 +241,10 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
     teams = data.get("teams", [])
     all_members = [m for t in teams for m in t.get("members", [])]
     if sorted(all_members) != sorted(submitted) or any(len(t.get("members", [])) not in (2, 3) for t in teams):
-        print("OpenAI 응답이 인원 검증에 실패해서 규칙 기반으로 대체")
+        print(
+            "OpenAI 응답이 인원 검증에 실패해서 규칙 기반으로 대체 — "
+            f"제출자: {sorted(submitted)} / 응답: {[t.get('members') for t in teams]}"
+        )
         return None
 
     for name in [n for n in names if n not in topics]:
