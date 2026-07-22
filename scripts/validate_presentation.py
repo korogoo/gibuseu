@@ -28,7 +28,10 @@ from lib import CATEGORY_LABELS, COMMENT_PREFIX, is_blank, load_state_set, parse
 ROOT = Path(__file__).resolve().parent.parent
 NEEDS_FIX_LABEL = "형식 확인 필요"
 ANNOUNCED_FILE = ROOT / "state" / "announced.json"
-DIFF_FIELDS = ["발표자", "발표일", "소분류", "소분류 - 직접 입력", "유형", "블로그 링크"]
+DIFF_FIELDS = ["발표자", "발표일", "소분류", "소분류 - 직접 입력", "유형"]
+# 블로그 링크는 여기서 다루지 않는다 — celebrate_closed.py가 이슈를 닫을 때
+# 블로그 링크 유무로 축하/재오픈을 이미 처리한다. 여기서도 diff로 알리면
+# "링크 채움" 알림이 두 번(수정 시 + 닫을 때) 겹쳐서 나가게 된다.
 
 
 def display_value(value: str) -> str:
