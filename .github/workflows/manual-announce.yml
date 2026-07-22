@@ -1,0 +1,23 @@
+name: manual-announce
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "디스코드에 보낼 메시지 (기부스지키미 이름으로 발송)"
+        type: string
+        required: true
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MESSAGE: ${{ inputs.message }}
+        run: |
+          CONTENT=$(printf '%s' "$MESSAGE" | jq -Rs '.')
+          curl -sf -X POST -H "Content-Type: application/json" \
+            -d "{\"content\": $CONTENT, \"username\": \"기부스지키미👀\"}" \
+            "$DISCORD_WEBHOOK_URL"
