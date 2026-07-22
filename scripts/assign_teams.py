@@ -253,7 +253,23 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
     return [{"members": sorted(t["members"]), "reason": t["reason"]} for t in teams]
 
 
+TEAM_LABEL_COLORS = ["C2E0C6", "BFDADC", "F9D0C4", "D4C5F9", "FFE0B2", "B3E5FC"]
+
+
+def ensure_team_labels_exist(count: int) -> None:
+    """조 개수가 늘어나면(예: 8명이 2/2/2/2로 나뉘어 4조까지 필요한 경우) 없는
+    'N조' 라벨을 미리 만들어둔다. GitHub는 존재하지 않는 라벨을 붙이려 하면
+    에러를 내면서 스크립트 전체가 죽어서, 라벨링 전에 항상 먼저 확인해야 한다."""
+    existing = {l["name"] for l in gh_json("label", "list", "--json", "name", "--limit", "200")}
+    for i in range(1, count + 1):
+        name = f"{i}조"
+        if name not in existing:
+            color = TEAM_LABEL_COLORS[(i - 1) % len(TEAM_LABEL_COLORS)]
+            gh("label", "create", name, "--color", color)
+
+
 def apply_team_labels(round_date: str, teams: list[list[str]]) -> None:
+    ensure_team_labels_exist(len(teams))
     issues = gh_json(
         "issue", "list", "--state", "open",
         "--json", "number,body,labels", "--limit", "200",
