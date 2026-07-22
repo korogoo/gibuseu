@@ -374,11 +374,17 @@ def main() -> None:
         teams = group_by_relevance(names, topics)
         reasons = None
 
-    round_no = (last_round["round"] + 1) if last_round else 1
-
-    history["rounds"].append(
-        {"round": round_no, "date": round_date.isoformat(), "teams": teams}
+    existing_round = next(
+        (r for r in history["rounds"] if r["date"] == round_date.isoformat()), None
     )
+    if existing_round:
+        existing_round["teams"] = teams
+        print(f"기존 회차({round_date.isoformat()})를 재배정 결과로 덮어씀")
+    else:
+        round_no = (last_round["round"] + 1) if last_round else 1
+        history["rounds"].append(
+            {"round": round_no, "date": round_date.isoformat(), "teams": teams}
+        )
     HISTORY_FILE.write_text(
         yaml.dump(history, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
