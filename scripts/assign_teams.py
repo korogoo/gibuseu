@@ -123,8 +123,9 @@ def load_topics(round_date: str) -> dict[str, Topic]:
         presenter = sections.get("발표자", "").strip()
         if not presenter:
             continue
-        label_names = {l["name"] for l in issue["labels"]}
-        category = next((l for l in label_names if l in CATEGORY_LABELS), "?")
+        # 이슈 라벨 순서 그대로 훑는다 (set으로 바꿔서 훑으면 파이썬 해시 랜덤화 때문에
+        # 라벨이 2개 이상인 이슈에서 매번 다른 카테고리가 뽑힐 수 있다 — 재현성 버그였음)
+        category = next((l["name"] for l in issue["labels"] if l["name"] in CATEGORY_LABELS), "?")
         subcategory = sections.get("소분류", "").strip()
         subcategory_other = sections.get("소분류 - 직접 입력", "").strip()
         if subcategory == "기타" and subcategory_other and subcategory_other != "_No response_":
@@ -207,15 +208,22 @@ def explain_team(team: list[str], topics: dict[str, Topic]) -> str:
     if len(subs) == 1:
         return f"모두 '{next(iter(subs))}' 주제라 묶었어요"
     if len(cats) == 1:
-        return f"모두 {next(iter(cats))} 분야라 묶었어요"
+        return f"모두 {next(iter(cats))} 분야({'·'.join(sorted(subs))})라 묶었어요"
+
+    cat_desc = common_field_label(team, topics)
+    base = (
+        f"{cat_desc} 두 분야가 카테고리상 인접해서 묶었어요"
+        if len(cats) == 2
+        else f"{cat_desc}가 순서대로 인접한 분야라 다리처럼 묶였어요"
+    )
 
     keyword_counts = Counter()
     for n in present:
         keyword_counts.update(topics[n].keywords)
     shared = sorted((w for w, c in keyword_counts.items() if c >= 2), key=lambda w: -keyword_counts[w])
     if shared:
-        return f"서로 다른 분야지만 '{', '.join(shared[:2])}' 키워드가 겹쳐서 묶었어요"
-    return "카테고리가 인접해서 묶었어요"
+        base += f" ('{', '.join(shared[:2])}' 키워드도 겹쳐요)"
+    return base
 
 
 def build_announcement(round_date: date, teams: list[list[str]], topics: dict[str, Topic]) -> str:

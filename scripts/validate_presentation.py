@@ -86,7 +86,9 @@ def main() -> None:
     if has_fix_label:
         gh("issue", "edit", number, "--remove-label", NEEDS_FIX_LABEL)
 
-    category = next((l for l in label_names if l in CATEGORY_LABELS), "?")
+    # set이 아니라 라벨 원본 순서로 훑는다 (set 순회는 해시 랜덤화로 라벨이 2개
+    # 이상인 이슈에서 실행마다 다른 카테고리가 뽑힐 수 있어서 재현성이 없다)
+    category = next((l["name"] for l in issue["labels"] if l["name"] in CATEGORY_LABELS), "?")
     field = f"{category} / {subcategory}" if subcategory else category
     announced = load_state_set(ANNOUNCED_FILE)
     issue_number = int(number)
