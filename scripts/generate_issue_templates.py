@@ -6,8 +6,10 @@ GitHub Issue Form은 '대분류 선택에 따라 소분류 옵션이 바뀌는' 
 템플릿을 고르는 것 자체가 대분류 선택이 되도록 한다. CATEGORIES.md를 고치면
 이 스크립트를 다시 실행해서 템플릿을 갱신한다.
 
-'조'는 폼에서 직접 고르지 않는다 — scripts/validate_presentation.py가 발표자 이름을
-teams/history.yaml의 최신 회차와 매칭해서 자동으로 라벨(1조/2조/3조)을 붙인다.
+'조'는 폼에서 직접 고르지 않는다 — scripts/assign_teams.py가 제출된 주제의 연관성을
+기준으로 회차별 조를 배정하면서 자동으로 라벨(1조/2조/3조)을 붙인다.
+
+발표 시간은 매 회차 23:00으로 고정이라 폼에 입력 필드가 없다.
 """
 from pathlib import Path
 
@@ -45,16 +47,8 @@ body:
     id: date
     attributes:
       label: 발표일
-      placeholder: "YYYY-MM-DD"
-    validations:
-      required: true
-
-  - type: input
-    id: time
-    attributes:
-      label: 발표 시간
-      description: 회차마다 시간이 다를 수 있으니 정확히 적어주세요. 1시간 전에 자동으로 디스코드 알림이 갑니다
-      placeholder: "20:00"
+      description: 발표 시간은 23:00 고정이지만, 날짜 뒤에 시간까지 함께 적어주세요
+      placeholder: "YYYY-MM-DD 23:00"
     validations:
       required: true
 

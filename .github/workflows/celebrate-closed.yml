@@ -1,24 +1,23 @@
-name: remind-missing
+name: celebrate-closed
 
 on:
-  schedule:
-    - cron: "0 0 * * *"  # 09:00 KST — 주제 제출 마감일(D-2)에만 실제로 알림 나감(스크립트가 판단)
-    - cron: "0 12 * * *" # 21:00 KST
-  workflow_dispatch: {}
+  issues:
+    types: [closed]
 
 permissions:
-  issues: read
+  issues: write
 
 jobs:
-  remind:
+  celebrate:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install pyyaml requests
-      - run: python scripts/remind_missing.py
+      - run: python scripts/celebrate_closed.py

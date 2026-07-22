@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""발표 등록 Issue를 검사하고 조를 자동 라벨링하는 '기부스지키미' 봇.
+"""발표 등록 Issue의 형식을 검사하는 '기부스지키미' 봇.
 
 - 발표자 이름이 members.yaml에 있는지
-- 발표일이 YYYY-MM-DD 형식인지
-- 발표 시간이 HH:MM 형식인지
+- 발표일이 "YYYY-MM-DD 23:00" 형식인지 (시간은 고정이지만 표기는 필수)
 - 소분류가 '기타'인데 직접입력이 비어있지 않은지
 - 학습 완료기준이 '-'로 시작하는 줄 2개 이상인지
 - 블로그 링크가 URL 형식인지 (입력했다면)
-문제가 있으면 코멘트를 남기고 '형식 확인 필요' 라벨을 붙인다.
-문제가 없으면 그 라벨을 떼고, teams/history.yaml에서 이슈의 발표일과 날짜가
-일치하는 회차(없으면 최신 회차)를 찾아 발표자의 조 라벨(1조/2조/3조)을
-자동으로 붙인다. 다른 회차의 조 라벨이 잘못 남아있으면 같이 정리한다.
+문제가 있으면 코멘트를 남기고 '형식 확인 필요' 라벨을 붙인다. 문제가 없으면 그 라벨을 뗀다.
+
+조 라벨(1조/2조/3조)은 여기서 붙이지 않는다 — 새 플로우에서는 주제 제출(D-2)이
+끝난 뒤 D-1에 scripts/assign_teams.py가 연관성 기준으로 조를 배정하면서 붙인다.
+등록 시점엔 아직 그 회차의 조가 정해지지 않았을 수 있어서다.
 
 문제가 없는 새 이슈는 디스코드에 발표 주제를 공지한다 (state/announced.json으로
 중복 방지). 이미 공지된 이슈가 수정(edited)되면 가벼운 "수정됨" 알림을 보낸다.
@@ -23,12 +23,11 @@ from pathlib import Path
 
 import yaml
 
-from lib import CATEGORY_LABELS, COMMENT_PREFIX, load_state_set, parse_sections, post_discord, save_state_set
+from lib import CATEGORY_LABELS, COMMENT_PREFIX, is_blank, load_state_set, parse_sections, post_discord, save_state_set
 
 ROOT = Path(__file__).resolve().parent.parent
 NEEDS_FIX_LABEL = "형식 확인 필요"
 ANNOUNCED_FILE = ROOT / "state" / "announced.json"
-TEAM_LABEL_RE = re.compile(r"^[1-9]\d*조$")
 
 
 def gh(*args) -> None:
@@ -45,26 +44,6 @@ def load_members() -> list[str]:
     return [m["name"] for m in data.get("members", []) if m.get("name")]
 
 
-def load_rounds() -> list[dict]:
-    data = yaml.safe_load((ROOT / "teams" / "history.yaml").read_text(encoding="utf-8")) or {}
-    return data.get("rounds") or []
-
-
-def find_team_label(presenter: str, presentation_date: str, rounds: list[dict]) -> str | None:
-    """발표일과 날짜가 일치하는 회차를 우선 쓰고, 없으면 최신 회차로 매칭한다."""
-    target = next((r for r in rounds if r["date"] == presentation_date), None) or (rounds[-1] if rounds else None)
-    if not target:
-        return None
-    for i, team in enumerate(target["teams"], start=1):
-        if presenter in team:
-            return f"{i}조"
-    return None
-
-
-def is_blank(value: str) -> bool:
-    return not value or value == "_No response_"
-
-
 def main() -> None:
     number = os.environ["ISSUE_NUMBER"]
     action = os.environ.get("ISSUE_ACTION", "opened")
@@ -79,12 +58,8 @@ def main() -> None:
         errors.append(f"닉네임에 오타가 있나요? 확인해주세요. (입력값: {presenter})")
 
     presentation_date = sections.get("발표일", "").strip()
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", presentation_date):
-        errors.append(f"발표 형식은 YYYY-MM-DD 로 작성해주세요. (입력값: {presentation_date})")
-
-    presentation_time = sections.get("발표 시간", "").strip()
-    if not re.fullmatch(r"\d{2}:\d{2}", presentation_time):
-        errors.append(f"발표 시간은 HH:MM 형식으로 작성해주세요. (입력값: {presentation_time})")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2} 23:00", presentation_date):
+        errors.append(f"발표일은 'YYYY-MM-DD 23:00' 형식으로 적어주세요 (시간은 23:00 고정). (입력값: {presentation_date})")
 
     subcategory = sections.get("소분류", "").strip()
     subcategory_other = sections.get("소분류 - 직접 입력", "").strip()
@@ -99,18 +74,6 @@ def main() -> None:
     blog = sections.get("블로그 링크", "").strip()
     if not is_blank(blog) and not re.match(r"^https?://\S+$", blog):
         errors.append(f"블로그 링크는 URL 형식으로 작성해주세요. (입력값: {blog})")
-
-    if presenter in members:
-        rounds = load_rounds()
-        team_label = find_team_label(presenter, presentation_date, rounds)
-        if team_label:
-            stale_labels = {l for l in label_names if TEAM_LABEL_RE.match(l) and l != team_label}
-            for stale in stale_labels:
-                gh("issue", "edit", number, "--remove-label", stale)
-            if team_label not in label_names:
-                gh("issue", "edit", number, "--add-label", team_label)
-        else:
-            errors.append("해당 발표일의 조 배정에서 발표자를 찾지 못했어요. 이름을 다시 확인해주세요.")
 
     has_fix_label = NEEDS_FIX_LABEL in label_names
     if errors:
@@ -131,12 +94,14 @@ def main() -> None:
     if issue_number not in announced:
         post_discord(
             f"📢 **새 발표 등록!** [{field}] {issue['title']}\n"
-            f"발표자: {presenter} · {presentation_date} {presentation_time}\n"
+            f"발표자: {presenter} · {presentation_date}\n"
             f"{issue['url']}"
         )
         save_state_set(ANNOUNCED_FILE, announced | {issue_number})
     elif action == "edited":
-        post_discord(f"✏️ **발표 정보 수정됨**: {issue['title']} ({presenter})\n{issue['url']}")
+        post_discord(
+            f"✏️ **발표 정보 수정됨**: [{field}] {issue['title']} ({presenter})\n{issue['url']}"
+        )
 
 
 if __name__ == "__main__":

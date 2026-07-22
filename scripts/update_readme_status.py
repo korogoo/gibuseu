@@ -9,7 +9,7 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
-from lib import CATEGORY_LABELS, parse_sections
+from lib import CATEGORY_LABELS, date_part, is_blank, parse_sections
 
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
@@ -35,17 +35,13 @@ def format_date(d: str) -> str:
         return d
 
 
-def is_blank(value: str) -> bool:
-    return not value or value == "_No response_"
-
-
 def build_table() -> str:
     by_date: dict[str, list[dict]] = {}
 
     for issue in list_issues():
         sections = parse_sections(issue["body"])
         presenter = sections.get("발표자", "").strip() or "?"
-        presentation_date = sections.get("발표일", "").strip() or "날짜 미정"
+        presentation_date = date_part(sections.get("발표일", "")) or "날짜 미정"
 
         subcategory = sections.get("소분류", "").strip()
         subcategory_other = sections.get("소분류 - 직접 입력", "").strip()
@@ -58,7 +54,8 @@ def build_table() -> str:
         blog = sections.get("블로그 링크", "").strip()
         blog_cell = f"[링크]({blog})" if not is_blank(blog) else "-"
 
-        time_cell = sections.get("발표 시간", "").strip() or "-"
+        # 발표 시간은 매 회차 23:00 고정. 옛 이슈에 남은 다른 시간값은 무시한다.
+        time_cell = "23:00"
 
         by_date.setdefault(presentation_date, []).append(
             {"presenter": presenter, "time": time_cell, "title": issue["title"], "field": field, "blog": blog_cell}

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """발표 시작 1시간 전에 디스코드로 알린다.
 
-회차마다 발표 시간이 다를 수 있어서 각 Issue의 발표일+발표 시간을 조합해
-목표 시각을 계산한다. 중복 방지는 라벨이 아니라 state/reminded_one_hour.json
+발표 시간은 매 회차 23:00 고정이다. 발표일 필드는 "YYYY-MM-DD 23:00"으로 적는 게
+표준이지만, 예전 형식("YYYY-MM-DD"만 있는)으로 남은 이슈도 있을 수 있어 23:00을
+붙여서 재시도하는 폴백을 둔다. 중복 방지는 라벨이 아니라 state/reminded_one_hour.json
 파일로 한다 (이슈에 내부용 라벨이 붙는 걸 원치 않는다는 운영 방침).
 """
 import json
@@ -29,12 +30,14 @@ def list_open_presentation_issues() -> list[dict]:
 
 def parse_target(sections: dict) -> datetime | None:
     date_str = sections.get("발표일", "").strip()
-    time_str = sections.get("발표 시간", "").strip()
     try:
-        naive = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        return datetime.strptime(date_str, "%Y-%m-%d %H:%M").replace(tzinfo=KST)
+    except ValueError:
+        pass
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").replace(hour=23, minute=0, tzinfo=KST)
     except ValueError:
         return None
-    return naive.replace(tzinfo=KST)
 
 
 def main() -> None:

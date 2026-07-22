@@ -2,13 +2,24 @@
 import json
 import os
 import re
+import subprocess
 from pathlib import Path
 
 import requests
+import yaml
 
 BOT_NAME = "기부스지키미👀"
 COMMENT_PREFIX = "**[기부스지키미👀💸]**"
 CATEGORY_LABELS = {"CS", "데이터베이스", "인프라/DevOps", "아키텍처", "보안", "테스트/QA", "AI"}
+
+
+def is_blank(value: str) -> bool:
+    return not value or value == "_No response_"
+
+
+def date_part(value: str) -> str:
+    """'발표일' 필드값("YYYY-MM-DD 23:00" 또는 "YYYY-MM-DD")에서 날짜 부분만 뗀다."""
+    return (value or "").strip()[:10]
 
 
 def parse_sections(body: str) -> dict:
@@ -42,3 +53,33 @@ def load_state_set(path: Path) -> set[int]:
 def save_state_set(path: Path, values: set[int]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(sorted(values)), encoding="utf-8")
+
+
+def latest_round_date(root: Path) -> str | None:
+    data = yaml.safe_load((root / "teams" / "history.yaml").read_text(encoding="utf-8")) or {}
+    rounds = data.get("rounds") or []
+    return rounds[-1]["date"] if rounds else None
+
+
+def presenters_for_round(round_date: str) -> set[str]:
+    """발표일이 round_date와 일치하는 이슈들의 발표자 집합을 구한다."""
+    out = subprocess.run(
+        ["gh", "issue", "list", "--state", "all", "--json", "body", "--limit", "200"],
+        check=True, capture_output=True, text=True,
+    )
+    issues = json.loads(out.stdout)
+    result = set()
+    for issue in issues:
+        sections = parse_sections(issue["body"])
+        if date_part(sections.get("발표일", "")) != round_date:
+            continue
+        presenter = sections.get("발표자", "").strip()
+        if presenter:
+            result.add(presenter)
+    return result
+
+
+def missing_members(members: list[str], round_date: str) -> list[str]:
+    """round_date에 발표하기로 등록된 이슈가 없는 스터디원을 계산한다."""
+    registered = presenters_for_round(round_date)
+    return [m for m in members if m not in registered]
