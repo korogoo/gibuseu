@@ -68,7 +68,10 @@ class Topic:
 
 
 def gh(*args) -> None:
-    subprocess.run(["gh", *args], check=True)
+    # gh는 성공하면 이슈/라벨 URL을 자기 stdout에 찍는다. 이 스크립트의 stdout은
+    # 통째로 디스코드 공지 문구로 쓰이므로(assign-teams.yml의 `| tee`), 여기서
+    # 새어나가면 공지 앞에 URL 잡음이 붙는다 — 실패 메시지 확인용 stderr만 남긴다.
+    subprocess.run(["gh", *args], check=True, stdout=subprocess.DEVNULL)
 
 
 def gh_json(*args):
@@ -188,7 +191,7 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
     try:
         from openai import OpenAI
     except ImportError:
-        print("openai 패키지가 없어서 규칙 기반으로 대체")
+        print("openai 패키지가 없어서 규칙 기반으로 대체", file=sys.stderr)
         return None
 
     profile = "\n".join(
@@ -235,7 +238,7 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
         )
         data = json.loads(resp.choices[0].message.content)
     except Exception as e:
-        print(f"OpenAI 호출 실패({e}) — 규칙 기반으로 대체")
+        print(f"OpenAI 호출 실패({e}) — 규칙 기반으로 대체", file=sys.stderr)
         return None
 
     teams = data.get("teams", [])
@@ -243,7 +246,8 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
     if sorted(all_members) != sorted(submitted) or any(len(t.get("members", [])) not in (2, 3) for t in teams):
         print(
             "OpenAI 응답이 인원 검증에 실패해서 규칙 기반으로 대체 — "
-            f"제출자: {sorted(submitted)} / 응답: {[t.get('members') for t in teams]}"
+            f"제출자: {sorted(submitted)} / 응답: {[t.get('members') for t in teams]}",
+            file=sys.stderr,
         )
         return None
 
@@ -376,19 +380,19 @@ def main() -> None:
     if not args.force and not args.date:
         d_minus_1 = round_date - timedelta(days=1)
         if date.today() != d_minus_1:
-            print(f"오늘은 다음 회차({round_date.isoformat()})의 D-1이 아니라서 스킵")
+            print(f"오늘은 다음 회차({round_date.isoformat()})의 D-1이 아니라서 스킵", file=sys.stderr)
             return
 
     topics = load_topics(round_date.isoformat())
     missing = [n for n in names if n not in topics]
     if missing:
-        print(f"주제 미제출: {', '.join(missing)} — 가장 작은 조에 강제 편입해서 진행")
+        print(f"주제 미제출: {', '.join(missing)} — 가장 작은 조에 강제 편입해서 진행", file=sys.stderr)
 
     llm_teams = llm_group_and_explain(names, topics)
     if llm_teams:
         teams = [t["members"] for t in llm_teams]
         reasons = [t["reason"] for t in llm_teams]
-        print(f"OpenAI({OPENAI_MODEL})로 완료기준까지 읽고 조 배정")
+        print(f"OpenAI({OPENAI_MODEL})로 완료기준까지 읽고 조 배정", file=sys.stderr)
     else:
         teams = group_by_relevance(names, topics)
         reasons = None
@@ -398,7 +402,7 @@ def main() -> None:
     )
     if existing_round:
         existing_round["teams"] = teams
-        print(f"기존 회차({round_date.isoformat()})를 재배정 결과로 덮어씀")
+        print(f"기존 회차({round_date.isoformat()})를 재배정 결과로 덮어씀", file=sys.stderr)
     else:
         round_no = (last_round["round"] + 1) if last_round else 1
         history["rounds"].append(
