@@ -28,6 +28,28 @@ from lib import CATEGORY_LABELS, COMMENT_PREFIX, is_blank, load_state_set, parse
 ROOT = Path(__file__).resolve().parent.parent
 NEEDS_FIX_LABEL = "형식 확인 필요"
 ANNOUNCED_FILE = ROOT / "state" / "announced.json"
+DIFF_FIELDS = ["발표자", "발표일", "소분류", "소분류 - 직접 입력", "유형", "블로그 링크"]
+
+
+def display_value(value: str) -> str:
+    value = value.strip()
+    return "(없음)" if is_blank(value) else value
+
+
+def build_diff(old_sections: dict, new_sections: dict) -> list[str]:
+    """수정 전/후 섹션을 비교해서 '필드: 기존 → 변경' 목록을 만든다.
+    학습 완료기준은 길어서 값 자체는 안 보여주고 변경 여부만 알린다."""
+    lines = []
+    for name in DIFF_FIELDS:
+        old = display_value(old_sections.get(name, ""))
+        new = display_value(new_sections.get(name, ""))
+        if old != new:
+            lines.append(f"- {name}: {old} → {new}")
+    old_criteria = old_sections.get("학습 완료기준", "").strip()
+    new_criteria = new_sections.get("학습 완료기준", "").strip()
+    if old_criteria != new_criteria:
+        lines.append("- 학습 완료기준도 수정됨 (내용은 이슈에서 확인)")
+    return lines
 
 
 def gh(*args) -> None:
@@ -101,9 +123,13 @@ def main() -> None:
         )
         save_state_set(ANNOUNCED_FILE, announced | {issue_number})
     elif action == "edited":
-        post_discord(
-            f"✏️ **발표 정보 수정됨**: [{field}] {issue['title']} ({presenter})\n{issue['url']}"
-        )
+        previous_body = os.environ.get("PREVIOUS_BODY", "")
+        diff_lines = build_diff(parse_sections(previous_body), sections) if previous_body else []
+        message = f"✏️ **발표 정보 수정됨**: [{field}] {issue['title']} ({presenter})\n"
+        if diff_lines:
+            message += "\n".join(diff_lines) + "\n"
+        message += issue["url"]
+        post_discord(message)
 
 
 if __name__ == "__main__":

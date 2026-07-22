@@ -16,6 +16,7 @@ jobs:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_ACTION: ${{ github.event.action }}
+      PREVIOUS_BODY: ${{ github.event.changes.body.from }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
