@@ -86,8 +86,8 @@ def format_date_kr(d: date) -> str:
 def load_members() -> list[str]:
     data = yaml.safe_load(MEMBERS_FILE.read_text(encoding="utf-8")) or {}
     names = [m["name"] for m in data.get("members", []) if m.get("name")]
-    if len(names) != 8:
-        sys.exit(f"members.yaml에 이름이 채워진 인원이 8명이어야 합니다 (현재 {len(names)}명)")
+    if not names:
+        sys.exit("members.yaml에 이름이 채워진 인원이 없습니다")
     return names
 
 
