@@ -6,12 +6,21 @@
 """
 import json
 import subprocess
+from collections import Counter
 from datetime import date
 
 from lib import COMMENT_PREFIX, parse_sections, post_discord
 
 OVERDUE_LABEL = "발표일 지남"
 NAG_MESSAGE = "취업은 조상님이 시켜주나요? 미루지 말고 블로그 작성하세요👴🏻💸"
+
+
+def nag_line(name: str, count: int) -> str:
+    if count >= 3:
+        return f"{name} - 벌써 {count}개나 밀림..도대체 언제까지 미룰거임?"
+    if count == 2:
+        return f"{name} - 2개 밀림..빨리빨리 쓰자.."
+    return f"{name} - 1개 밀림. 하나가 2개 되고 2개가 3개 된다.."
 
 
 def list_open_presentation_issues() -> list[dict]:
@@ -29,10 +38,11 @@ def list_open_presentation_issues() -> list[dict]:
 
 def main() -> None:
     today = date.today().isoformat()
-    overdue = []
+    overdue_counts: Counter[str] = Counter()
 
     for issue in list_open_presentation_issues():
-        presentation_date = parse_sections(issue["body"]).get("발표일", "").strip()
+        sections = parse_sections(issue["body"])
+        presentation_date = sections.get("발표일", "").strip()
         if not presentation_date or presentation_date >= today:
             continue
 
@@ -46,12 +56,14 @@ def main() -> None:
              "--body", f"{COMMENT_PREFIX}\n\n{NAG_MESSAGE}"],
             check=True,
         )
-        overdue.append(issue["url"])
+        presenter = sections.get("발표자", "").strip() or "(이름 미상)"
+        overdue_counts[presenter] += 1
 
-    if overdue:
-        lines = "\n".join(f"- {u}" for u in overdue)
-        post_discord(f"{NAG_MESSAGE}\n{lines}")
-    print(f"overdue: {len(overdue)}")
+    if overdue_counts:
+        ranked = sorted(overdue_counts.items(), key=lambda kv: kv[1], reverse=True)
+        lines = "\n".join(nag_line(name, count) for name, count in ranked)
+        post_discord(f"{NAG_MESSAGE}\n\n{lines}")
+    print(f"overdue: {sum(overdue_counts.values())}")
 
 
 if __name__ == "__main__":
