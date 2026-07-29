@@ -28,7 +28,7 @@ import yaml
 
 from lib import CATEGORY_LABELS, date_part, load_members, parse_sections
 
-OPENAI_MODEL = "gpt-4o-mini"
+OPENAI_MODEL = "gpt-4o"  # gpt-4o-mini는 이유 문장이 "같은 분야라서" 수준에서 못 벗어났다
 
 ROOT = Path(__file__).resolve().parent.parent
 HISTORY_FILE = ROOT / "teams" / "history.yaml"
@@ -160,13 +160,38 @@ def team_sizes(total: int) -> list[int]:
     return sizes
 
 
-def fill_missing(teams: list[list[str]], sizes: list[int], missing: list[str]) -> None:
-    """주제 미제출자를 목표 크기에 가장 많이 못 미치는 조부터 채운다(제자리 수정)."""
+def fill_missing(
+    teams: list[list[str]], sizes: list[int], missing: list[str]
+) -> dict[int, list[str]]:
+    """주제 미제출자를 목표 크기에 가장 많이 못 미치는 조부터 채운다(제자리 수정).
+
+    어느 조에 누가 편입됐는지 {조 인덱스: [이름]}으로 돌려준다 — 조 편성 이유를
+    쓸 때 필요하다. LLM은 제출자만 보고 나누므로 편입 결과를 모르고, 그대로 두면
+    3인조를 "단독 팀"이라고 설명하는 일이 생긴다.
+    """
+    appended: dict[int, list[str]] = {}
     for name in missing:
-        team, _ = max(
-            zip(teams, sizes), key=lambda ts: (ts[1] - len(ts[0]), -len(ts[0]))
+        idx, _ = max(
+            enumerate(teams), key=lambda it: (sizes[it[0]] - len(it[1]), -len(it[1]))
         )
-        team.append(name)
+        teams[idx].append(name)
+        appended.setdefault(idx, []).append(name)
+    return appended
+
+
+def josa(word: str, pair: str) -> str:
+    """받침 유무로 조사를 고른다. pair는 '은는'/'이가'/'과와'처럼 받침 있을 때가 앞."""
+    ch = word[-1] if word else ""
+    has_batchim = "가" <= ch <= "힣" and (ord(ch) - 0xAC00) % 28
+    return pair[0] if has_batchim else pair[1]
+
+
+def note_appended(names: list[str]) -> str:
+    """주제 미제출로 편입된 사람을 이유 문장 끝에 덧붙이는 문구."""
+    if not names:
+        return ""
+    joined = "·".join(names)
+    return f" (주제 미제출한 {joined}{josa(joined, '은는')} 빈자리가 있는 이 조에 편입됐어요)"
 
 
 def group_by_relevance(names: list[str], topics: dict[str, Topic]) -> list[list[str]]:
@@ -264,10 +289,16 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
         )
         + ".\n\n"
         f"{profile}\n\n"
-        "각 팀마다 왜 그렇게 묶었는지 한국어로 한 문장씩 써라. 완료기준에 나온 "
-        "구체적인 개념·메커니즘이 서로 어떻게 이어지는지 찾아서 그 연결고리를 근거로 설명해라. 예시: "
-        "'트랜잭션 격리 수준(정콩이)이 스프링에서 AOP 프록시(캐리)로 실현된다는 연결고리로 묶었어요'. "
-        "그런 연결고리가 뚜렷하지 않은 팀은 정직하게 '같은 대분류(◯◯)로 묶었다'고 사실 그대로 설명해라."
+        "각 팀마다 왜 그렇게 묶었는지 한국어로 한 문장씩 써라.\n"
+        "**형식: 완료기준에서 뽑은 구체적인 키워드 뒤에 그 사람 닉네임을 괄호로 붙이고, "
+        "두 키워드가 어떻게 이어지는지 설명해라.** 예시:\n"
+        "- '트랜잭션 격리 수준(정콩이)을 스프링이 AOP 프록시(캐리)로 실현한다는 연결고리로 묶었어요'\n"
+        "- 'WAL 로그 순서(동키)가 결국 버퍼 풀 플러시 시점(어셔)을 정한다는 점에서 이어져요'\n"
+        "키워드는 '데이터베이스', '이론 학습' 같은 분류명이 아니라 완료기준 문장에 실제로 나온 "
+        "개념·메커니즘이어야 한다(예: 'B+Tree 리프 노드', '넥스트 키 락', '커버링 인덱스').\n"
+        "'같은 분야라서', '기본 개념을 깊이 이해하는 데 도움이 되어서' 같은 뭉뚱그린 설명은 쓰지 마라. "
+        "진짜 연결고리가 없으면 억지로 만들지 말고 각자의 키워드만 짚어서 "
+        "'A(닉네임)와 B(닉네임)은 직접 이어지진 않지만 둘 다 ◯◯를 다뤄요'처럼 한계를 인정해라."
     )
 
     # 검증 실패는 대부분 확률적이라(팀 개수·인원 누락) 한 번은 다시 물어본다. 조용히
@@ -302,13 +333,20 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
             continue
 
         filled = [t["members"] for t in teams]
-        fill_missing(filled, sizes, missing)
+        appended = fill_missing(filled, sizes, missing)
         # 미제출자를 채우고 나서도 2~3인이 안 되면(LLM이 한쪽에 몰아준 경우) 다시 시도한다.
         if not all(2 <= len(t) <= 3 for t in filled):
             print(f"채우고 나니 조 크기가 2~3을 벗어남({attempt}/2) — {filled}", file=sys.stderr)
             continue
 
-        return [{"members": sorted(t), "reason": tm["reason"]} for t, tm in zip(filled, teams)]
+        # LLM은 제출자만 보고 나눴으니 편입 사실을 모른다 — 이유 문장에 직접 덧붙인다.
+        return [
+            {
+                "members": sorted(t),
+                "reason": tm["reason"] + note_appended(appended.get(i, [])),
+            }
+            for i, (t, tm) in enumerate(zip(filled, teams))
+        ]
 
     print("OpenAI 응답이 두 번 다 검증에 실패해서 규칙 기반으로 대체", file=sys.stderr)
     return None
@@ -363,30 +401,51 @@ def common_field_label(team: list[str], topics: dict[str, Topic]) -> str:
 
 
 def explain_team(team: list[str], topics: dict[str, Topic]) -> str:
+    """규칙 기반 조 편성 이유. LLM 경로와 같은 '키워드(닉네임)' 형식을 지킨다."""
     present = [n for n in team if n in topics]
-    if len(present) < len(team):
-        return "주제 미제출자가 있어 가장 작은 조에 편입했어요"
-    subs = {topics[n].subcategory for n in present}
-    cats = {topics[n].category for n in present}
-    if len(subs) == 1:
-        return f"모두 '{next(iter(subs))}' 주제라 묶었어요"
-    if len(cats) == 1:
-        return f"모두 {next(iter(cats))} 분야({'·'.join(sorted(subs))})라 묶었어요"
+    absent = [n for n in team if n not in topics]
 
-    cat_desc = common_field_label(team, topics)
-    base = (
-        f"{cat_desc} 두 분야가 카테고리상 인접해서 묶었어요"
-        if len(cats) == 2
-        else f"{cat_desc}가 순서대로 인접한 분야라 다리처럼 묶였어요"
-    )
+    def with_nick(names: list[str], pick) -> str:
+        return "·".join(f"{pick(n)}({n})" for n in names)
 
-    keyword_counts = Counter()
-    for n in present:
-        keyword_counts.update(topics[n].keywords)
-    shared = sorted((w for w, c in keyword_counts.items() if c >= 2), key=lambda w: -keyword_counts[w])
-    if shared:
-        base += f" ('{', '.join(shared[:2])}' 키워드도 겹쳐요)"
-    return base
+    if not present:
+        return f"{'·'.join(absent)} 모두 주제를 안 내서 한 조가 됐어요"
+
+    if len(present) == 1:
+        n = present[0]
+        base = f"{topics[n].subcategory}({n}) 주제예요"
+    else:
+        last = present[-1]
+        subs = {topics[n].subcategory for n in present}
+        cats = {topics[n].category for n in present}
+        keyword_counts = Counter()
+        for n in present:
+            keyword_counts.update(topics[n].keywords)
+        shared = sorted(
+            (w for w, c in keyword_counts.items() if c >= 2), key=lambda w: -keyword_counts[w]
+        )
+        shared_note = f" ('{', '.join(shared[:2])}' 키워드가 겹쳐요)" if shared else ""
+
+        if len(subs) == 1:
+            # 소분류까지 같으면 키워드(닉네임)을 나열해봐야 같은 말이 반복될 뿐이다.
+            base = f"{'·'.join(present)} 모두 '{next(iter(subs))}' 주제라 묶었어요" + shared_note
+        elif shared:
+            base = (
+                f"{with_nick(present, lambda n: topics[n].subcategory)}"
+                f"{josa(last, '이가')} '{', '.join(shared[:2])}' 키워드로 이어져요"
+            )
+        elif len(cats) == 1:
+            base = (
+                f"{with_nick(present, lambda n: topics[n].subcategory)}"
+                f"{josa(last, '이가')} 같은 {next(iter(cats))} 분야라 묶었어요"
+            )
+        else:
+            base = (
+                f"{with_nick(present, lambda n: topics[n].category)}"
+                f"{josa(last, '은는')} 직접 이어지진 않지만 카테고리가 인접해서 묶었어요"
+            )
+
+    return base + note_appended(absent)
 
 
 def build_announcement(
