@@ -334,9 +334,12 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
             resp = client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
-                # 같은 입력이면 같은 편성이 나오게 고정한다 — 기본값이면 돌릴 때마다
+                # 같은 입력이면 같은 결과가 나오게 고정한다 — 기본값이면 돌릴 때마다
                 # 조가 바뀌어서 미리보기로 확인한 결과와 실제 공지가 달라진다.
+                # temperature만으로는 이유 문장 표현이 흔들려서 seed까지 준다
+                # (OpenAI가 보장하는 건 best-effort라 완전 동일을 장담하진 못한다).
                 temperature=0,
+                seed=20260731,
                 response_format={
                     "type": "json_schema",
                     "json_schema": {"name": "team_grouping", "schema": schema, "strict": True},
