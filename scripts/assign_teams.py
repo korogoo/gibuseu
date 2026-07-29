@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """제출된 발표 주제의 연관성(소분류 → 대분류 → 완료기준 키워드)을 기준으로 2~3인 팀을
-배정하고 teams/history.yaml에 기록한다. 배정과 동시에 해당 회차 이슈들에 조 라벨(1조/2조/3조)을
-붙이고, 왜 그렇게 묶었는지와 조별 발표 주제 링크를 담은 디스코드 공지 문구를 stdout에 출력한다.
+배정하고 teams/history.yaml에 기록한다. 조는 2인 페어가 기본이고 인원이 홀수일 때만 한 조가
+3인이 된다. 배정과 동시에 해당 회차 이슈들에 조 라벨(1조/2조/…)을 붙이고, 왜 그렇게 묶었는지와 조별 발표 주제 링크를 담은 디스코드 공지 문구를 stdout에 출력한다.
 
 플로우: D-2 자정까지 주제 제출 → D-1에 이 스크립트가 연관성 기준으로 팀 배정 → D-day 발표.
 그래서 이 스크립트는 "회차 날짜"를 직접 만들어내지 않고, 다음 회차 날짜(마지막 회차 +
@@ -32,7 +32,6 @@ OPENAI_MODEL = "gpt-4o-mini"
 
 ROOT = Path(__file__).resolve().parent.parent
 HISTORY_FILE = ROOT / "teams" / "history.yaml"
-TEAM_SIZES = [3, 3, 2]
 INTERVAL_DAYS = 4
 WEEKDAYS_KO = ["월", "화", "수", "목", "금", "토", "일"]
 TEAM_LABEL_RE = re.compile(r"^[1-9]\d*조$")
@@ -146,9 +145,33 @@ def load_topics(round_date: str) -> dict[str, Topic]:
     return partial
 
 
+def team_sizes(total: int) -> list[int]:
+    """2인 페어를 기본으로 하고, 인원이 홀수일 때만 한 조를 3인으로 만든다.
+
+    조 개수를 3개로 고정했던 시절이 있었는데, 스터디에서 자동 배정을 뒤집고
+    직접 2인 페어로 다시 짜는 일이 생겨서(5회차) 페어 우선으로 바꿨다.
+    조가 몇 개가 되든 `ensure_team_labels_exist()`가 'N조' 라벨을 만들어준다.
+    """
+    if total < 2:
+        return [total] if total else []
+    sizes = [2] * (total // 2)
+    if total % 2:
+        sizes[-1] = 3
+    return sizes
+
+
+def fill_missing(teams: list[list[str]], sizes: list[int], missing: list[str]) -> None:
+    """주제 미제출자를 목표 크기에 가장 많이 못 미치는 조부터 채운다(제자리 수정)."""
+    for name in missing:
+        team, _ = max(
+            zip(teams, sizes), key=lambda ts: (ts[1] - len(ts[0]), -len(ts[0]))
+        )
+        team.append(name)
+
+
 def group_by_relevance(names: list[str], topics: dict[str, Topic]) -> list[list[str]]:
-    """제출된 주제의 (대분류, 소분류)가 가까운 사람끼리 우선 묶어서 3/3/2 팀으로 나눈다.
-    주제를 제출하지 않은 사람(마감 엄수)은 뒤로 보내 가장 작은 조에 강제 편입한다."""
+    """제출된 주제의 (대분류, 소분류)가 가까운 사람끼리 우선 묶어서 2인 페어 위주로 나눈다.
+    주제를 제출하지 않은 사람(마감 엄수)은 뒤로 보내 빈자리가 많은 조에 강제 편입한다."""
     submitted = [n for n in names if n in topics]
     missing = [n for n in names if n not in topics]
 
@@ -158,18 +181,17 @@ def group_by_relevance(names: list[str], topics: dict[str, Topic]) -> list[list[
 
     submitted.sort(key=sort_key)
 
+    sizes = team_sizes(len(names))
     teams: list[list[str]] = []
     i = 0
-    for size in TEAM_SIZES:
+    for size in sizes:
         teams.append(submitted[i : i + size])
         i += size
     while i < len(submitted):
         teams[-1].append(submitted[i])
         i += 1
 
-    for name in missing:
-        smallest = min(teams, key=len)
-        smallest.append(name)
+    fill_missing(teams, sizes, missing)
 
     return [sorted(t) for t in teams if t]
 
@@ -184,7 +206,10 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
         return None
 
     submitted = [n for n in names if n in topics]
-    if len(submitted) < 4:
+    missing = [n for n in names if n not in topics]
+    sizes = team_sizes(len(names))
+    # 조 개수만큼 제출자가 없으면 LLM이 빈 조를 만들 수밖에 없으니 규칙 기반에 맡긴다.
+    if len(submitted) < 4 or len(submitted) < len(sizes):
         return None
 
     try:
@@ -220,8 +245,15 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
     prompt = (
         "아래는 스터디원들이 이번 회차에 제출한 발표 주제와 완료기준이다. "
         "내용상 서로 연관된 사람끼리 팀으로 묶어라. "
-        f"전체 {len(submitted)}명을 빠짐없이 배정하고, 정확히 3개 팀으로 나누되 "
-        "팀 크기는 2 또는 3만 써라(예: 8명이면 3/3/2).\n\n"
+        f"아래 {len(submitted)}명을 빠짐없이 배정하고, 정확히 {len(sizes)}개 팀으로 나눠라. "
+        "2인 페어가 기본이고, 인원이 홀수라 남을 때만 한 팀을 3인으로 만들어라"
+        + (
+            f" (주제 미제출자 {len(missing)}명이 나중에 작은 팀부터 채워지니, "
+            "지금은 1~2인짜리 팀이 나와도 된다)"
+            if missing
+            else ""
+        )
+        + ".\n\n"
         f"{profile}\n\n"
         "각 팀마다 왜 그렇게 묶었는지 한국어로 한 문장씩 써라. 완료기준에 나온 "
         "구체적인 개념·메커니즘이 서로 어떻게 이어지는지 찾아서 그 연결고리를 근거로 설명해라. 예시: "
@@ -247,9 +279,9 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
     teams = data.get("teams", [])
     all_members = [m for t in teams for m in t.get("members", [])]
     valid = (
-        len(teams) == 3
+        len(teams) == len(sizes)
         and sorted(all_members) == sorted(submitted)
-        and all(len(t.get("members", [])) in (2, 3) for t in teams)
+        and all(1 <= len(t.get("members", [])) <= 3 for t in teams)
     )
     if not valid:
         print(
@@ -259,10 +291,17 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
         )
         return None
 
-    for name in [n for n in names if n not in topics]:
-        min(teams, key=lambda t: len(t["members"]))["members"].append(name)
+    filled = [t["members"] for t in teams]
+    fill_missing(filled, sizes, missing)
+    # 미제출자를 채우고 나서도 2~3인이 안 되면(LLM이 한쪽에 몰아준 경우) 규칙 기반에 맡긴다.
+    if not all(2 <= len(t) <= 3 for t in filled):
+        print(
+            f"OpenAI 응답을 채우고 나니 조 크기가 2~3을 벗어나서 규칙 기반으로 대체 — {filled}",
+            file=sys.stderr,
+        )
+        return None
 
-    return [{"members": sorted(t["members"]), "reason": t["reason"]} for t in teams]
+    return [{"members": sorted(t), "reason": team["reason"]} for t, team in zip(filled, teams)]
 
 
 TEAM_LABEL_COLORS = ["C2E0C6", "BFDADC", "F9D0C4", "D4C5F9", "FFE0B2", "B3E5FC"]
