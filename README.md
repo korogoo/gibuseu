@@ -55,7 +55,7 @@
 | 동키 | 23:00 | 옵티마이저는 어떻게 최적의 길을 고르는가 (feat. 비용과 통계) | 데이터베이스 / 인덱스 & 쿼리 최적화 | - |
 | 아론 | 23:00 | 네트워크부터 Nginx, Spring까지 그래서 Proxy가 뭔데? | CS / 네트워크 | - |
 | 캐리 | 23:00 | 스프링은 어떻게 내 코드에 부가기능을 몰래 끼워넣는가? (빈 후처리기부터 AOP까지) | 아키텍처 / AOP | - |
-| 티뉴 | 23:00 | .ibd 파일 덤프를 바탕으로 이해하는 InnoDB 레코드의 물리 구조와 INSERT, DELETE, UPDATE 동작 원리 | 데이터베이스 / 자료구조 | - |
+| 티뉴 | 23:00 | .ibd 파일 덤프를 바탕으로 이해하는 InnoDB 레코드의 물리 구조와 INSERT, DELETE, UPDATE 동작 원리 | 데이터베이스 / 자료구조 | [링크](https://johnprk.github.io/dev/innodb-record-anatomy/) |
 | 어셔 | 23:00 | 팀플 시작 전에 깃 브랜치 전략 학습하기 | 인프라/DevOps / 깃 브랜치 전략 | [링크](https://sinequanon.tistory.com/13) |
 | 코로구 | 23:00 | 컴퓨터구조 지겨우니까 이번엔 데이터베이스 | 데이터베이스 / 딥다이브 전 알아야 할 기본 개념 | - |
 | 정콩이 | 23:00 | InnoDB REPEATABLE READ는 Phantom Read를 어떻게 막는가? (MVCC → FOR UPDATE → Gap/Next-Key Lock) | 데이터베이스 / 트랜잭션 & 정합성 | - |
