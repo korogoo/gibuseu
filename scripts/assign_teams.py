@@ -186,6 +186,29 @@ def josa(word: str, pair: str) -> str:
     return pair[0] if has_batchim else pair[1]
 
 
+# "키워드(닉네임)" 또는 "'키워드(닉네임)'" 바로 뒤에 붙은 조사를 잡는다.
+NICK_JOSA_RE = re.compile(r"\(([^()]{1,20})\)(['\"]?)(은|는|이|가|와|과|을|를)")
+JOSA_PAIRS = {
+    "은": "은는", "는": "은는", "이": "이가", "가": "이가",
+    "와": "과와", "과": "과와", "을": "을를", "를": "을를",
+}
+
+
+def fix_josa_after_nick(text: str, names: list[str]) -> str:
+    """'키워드(닉네임)' 뒤 조사를 닉네임 받침에 맞춘다.
+
+    괄호 앞 단어에 맞출지 괄호 안 닉네임에 맞출지는 관례가 갈리는데, LLM이
+    실행마다 다르게 쓰는 걸 막으려고 닉네임 기준으로 고정한다.
+    """
+    def repl(m: re.Match) -> str:
+        nick, quote, particle = m.groups()
+        if nick not in names:
+            return m.group(0)
+        return f"({nick}){quote}{josa(nick, JOSA_PAIRS[particle])}"
+
+    return NICK_JOSA_RE.sub(repl, text)
+
+
 def note_appended(names: list[str]) -> str:
     """주제 미제출로 편입된 사람을 이유 문장 끝에 덧붙이는 문구."""
     if not names:
@@ -298,7 +321,9 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
         "개념·메커니즘이어야 한다(예: 'B+Tree 리프 노드', '넥스트 키 락', '커버링 인덱스').\n"
         "'같은 분야라서', '기본 개념을 깊이 이해하는 데 도움이 되어서' 같은 뭉뚱그린 설명은 쓰지 마라. "
         "진짜 연결고리가 없으면 억지로 만들지 말고 각자의 키워드만 짚어서 "
-        "'A(닉네임)와 B(닉네임)은 직접 이어지진 않지만 둘 다 ◯◯를 다뤄요'처럼 한계를 인정해라."
+        "'A(닉네임)와 B(닉네임)은 직접 이어지진 않지만 둘 다 ◯◯를 다뤄요'처럼 한계를 인정해라.\n"
+        "**말투는 '~해요/~예요'체로 써라** — 공지 전체가 그 톤이라 '~합니다'체가 섞이면 어색하다. "
+        "'유익할 거예요', '이해를 도울 수 있어요' 같은 군더더기 없이 딱 한 문장, 80자 안쪽으로 끊어라."
     )
 
     # 검증 실패는 대부분 확률적이라(팀 개수·인원 누락) 한 번은 다시 물어본다. 조용히
@@ -309,6 +334,9 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
             resp = client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
+                # 같은 입력이면 같은 편성이 나오게 고정한다 — 기본값이면 돌릴 때마다
+                # 조가 바뀌어서 미리보기로 확인한 결과와 실제 공지가 달라진다.
+                temperature=0,
                 response_format={
                     "type": "json_schema",
                     "json_schema": {"name": "team_grouping", "schema": schema, "strict": True},
@@ -343,7 +371,8 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
         return [
             {
                 "members": sorted(t),
-                "reason": tm["reason"] + note_appended(appended.get(i, [])),
+                "reason": fix_josa_after_nick(tm["reason"], submitted)
+                + note_appended(appended.get(i, [])),
             }
             for i, (t, tm) in enumerate(zip(filled, teams))
         ]
