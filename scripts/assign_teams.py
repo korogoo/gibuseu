@@ -231,7 +231,13 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
                 "items": {
                     "type": "object",
                     "properties": {
-                        "members": {"type": "array", "items": {"type": "string"}},
+                        # 이름을 자유 문자열로 두면 주제 본문에 나온 단어를 사람 이름으로
+                        # 착각해서 뱉는다 (실제로 '커버링 인덱스' 때문에 캐리가 '커버링'으로
+                        # 바뀐 적이 있다). enum으로 제출자 이름만 고르게 강제한다.
+                        "members": {
+                            "type": "array",
+                            "items": {"type": "string", "enum": submitted},
+                        },
                         "reason": {"type": "string"},
                     },
                     "required": ["members", "reason"],
@@ -244,8 +250,11 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
     }
     prompt = (
         "아래는 스터디원들이 이번 회차에 제출한 발표 주제와 완료기준이다. "
-        "내용상 서로 연관된 사람끼리 팀으로 묶어라. "
-        f"아래 {len(submitted)}명을 빠짐없이 배정하고, 정확히 {len(sizes)}개 팀으로 나눠라. "
+        "내용상 서로 연관된 사람끼리 팀으로 묶어라.\n"
+        f"배정 대상은 정확히 이 {len(submitted)}명이다: {', '.join(submitted)}. "
+        "이 목록에 있는 이름만, 적힌 그대로 써라. 발표 제목이나 완료기준에 나온 기술 용어를 "
+        "사람 이름으로 착각하지 마라. 한 사람도 빠뜨리거나 중복시키지 마라.\n"
+        f"정확히 {len(sizes)}개 팀으로 나눠라. "
         "2인 페어가 기본이고, 인원이 홀수라 남을 때만 한 팀을 3인으로 만들어라"
         + (
             f" (주제 미제출자 {len(missing)}명이 나중에 작은 팀부터 채워지니, "
@@ -261,47 +270,48 @@ def llm_group_and_explain(names: list[str], topics: dict[str, Topic]) -> list[di
         "그런 연결고리가 뚜렷하지 않은 팀은 정직하게 '같은 대분류(◯◯)로 묶었다'고 사실 그대로 설명해라."
     )
 
-    try:
-        client = OpenAI(api_key=api_key)
-        resp = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {"name": "team_grouping", "schema": schema, "strict": True},
-            },
-        )
-        data = json.loads(resp.choices[0].message.content)
-    except Exception as e:
-        print(f"OpenAI 호출 실패({e}) — 규칙 기반으로 대체", file=sys.stderr)
-        return None
+    # 검증 실패는 대부분 확률적이라(팀 개수·인원 누락) 한 번은 다시 물어본다. 조용히
+    # 규칙 기반으로 떨어지면 "완료기준을 읽고 묶는다"는 기능이 사실상 안 쓰이게 된다.
+    client = OpenAI(api_key=api_key)
+    for attempt in range(1, 3):
+        try:
+            resp = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {"name": "team_grouping", "schema": schema, "strict": True},
+                },
+            )
+            teams = json.loads(resp.choices[0].message.content).get("teams", [])
+        except Exception as e:
+            print(f"OpenAI 호출 실패({e}) — 규칙 기반으로 대체", file=sys.stderr)
+            return None
 
-    teams = data.get("teams", [])
-    all_members = [m for t in teams for m in t.get("members", [])]
-    valid = (
-        len(teams) == len(sizes)
-        and sorted(all_members) == sorted(submitted)
-        and all(1 <= len(t.get("members", [])) <= 3 for t in teams)
-    )
-    if not valid:
-        print(
-            "OpenAI 응답이 인원 검증에 실패해서 규칙 기반으로 대체 — "
-            f"제출자: {sorted(submitted)} / 응답: {[t.get('members') for t in teams]}",
-            file=sys.stderr,
-        )
-        return None
+        all_members = [m for t in teams for m in t.get("members", [])]
+        if not (
+            len(teams) == len(sizes)
+            and sorted(all_members) == sorted(submitted)
+            and all(1 <= len(t.get("members", [])) <= 3 for t in teams)
+        ):
+            print(
+                f"OpenAI 응답 인원 검증 실패({attempt}/2) — "
+                f"제출자: {sorted(submitted)} / 응답: {[t.get('members') for t in teams]}",
+                file=sys.stderr,
+            )
+            continue
 
-    filled = [t["members"] for t in teams]
-    fill_missing(filled, sizes, missing)
-    # 미제출자를 채우고 나서도 2~3인이 안 되면(LLM이 한쪽에 몰아준 경우) 규칙 기반에 맡긴다.
-    if not all(2 <= len(t) <= 3 for t in filled):
-        print(
-            f"OpenAI 응답을 채우고 나니 조 크기가 2~3을 벗어나서 규칙 기반으로 대체 — {filled}",
-            file=sys.stderr,
-        )
-        return None
+        filled = [t["members"] for t in teams]
+        fill_missing(filled, sizes, missing)
+        # 미제출자를 채우고 나서도 2~3인이 안 되면(LLM이 한쪽에 몰아준 경우) 다시 시도한다.
+        if not all(2 <= len(t) <= 3 for t in filled):
+            print(f"채우고 나니 조 크기가 2~3을 벗어남({attempt}/2) — {filled}", file=sys.stderr)
+            continue
 
-    return [{"members": sorted(t), "reason": team["reason"]} for t, team in zip(filled, teams)]
+        return [{"members": sorted(t), "reason": tm["reason"]} for t, tm in zip(filled, teams)]
+
+    print("OpenAI 응답이 두 번 다 검증에 실패해서 규칙 기반으로 대체", file=sys.stderr)
+    return None
 
 
 TEAM_LABEL_COLORS = ["C2E0C6", "BFDADC", "F9D0C4", "D4C5F9", "FFE0B2", "B3E5FC"]
