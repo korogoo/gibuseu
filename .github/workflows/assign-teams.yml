@@ -13,6 +13,10 @@ on:
         description: "회차 날짜 직접 지정 (YYYY-MM-DD, 비우면 자동 계산). 주기가 안 맞는 예외적인 회차에 사용"
         type: string
         default: ""
+      dry_run:
+        description: "미리보기 — 결과를 Actions 로그에만 남기고 기록·라벨·디스코드 공지는 하지 않음"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -38,10 +42,12 @@ jobs:
           python scripts/assign_teams.py \
             ${{ inputs.force && '--force' || '' }} \
             ${{ inputs.date && format('--date {0}', inputs.date) || '' }} \
+            ${{ inputs.dry_run && '--dry-run' || '' }} \
             | tee team_result.txt
 
       - name: Commit result
         id: commit
+        if: ${{ !inputs.dry_run }}
         run: |
           git config user.name "gibuseu-bot"
           git config user.email "actions@users.noreply.github.com"

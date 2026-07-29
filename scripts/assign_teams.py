@@ -411,6 +411,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="D-1 여부 검사 없이 강제 배정")
     parser.add_argument("--date", type=str, default=None, help="회차 날짜 직접 지정 (YYYY-MM-DD), D-1 검사 생략")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="배정 결과를 계산만 하고 history.yaml 기록·조 라벨은 건드리지 않는다 (미리보기용)",
+    )
     args = parser.parse_args()
 
     history = load_history()
@@ -434,7 +439,7 @@ def main() -> None:
     topics = load_topics(round_date.isoformat())
     missing = [n for n in names if n not in topics]
     if missing:
-        print(f"주제 미제출: {', '.join(missing)} — 가장 작은 조에 강제 편입해서 진행", file=sys.stderr)
+        print(f"주제 미제출: {', '.join(missing)} — 빈자리가 많은 조에 강제 편입해서 진행", file=sys.stderr)
 
     llm_teams = llm_group_and_explain(names, topics)
     if llm_teams:
@@ -444,6 +449,13 @@ def main() -> None:
     else:
         teams = group_by_relevance(names, topics)
         reasons = None
+
+    if args.dry_run:
+        # 미리보기 — history.yaml도 조 라벨도 건드리지 않는다. history.yaml이 그대로면
+        # 워크플로우의 커밋 스텝이 no-op이 되고, 디스코드 공지도 따라서 안 나간다.
+        print("[dry-run] 기록·라벨·디스코드 공지 없이 결과만 출력한다", file=sys.stderr)
+        print(build_announcement(round_date, teams, topics, reasons))
+        return
 
     existing_round = next(
         (r for r in history["rounds"] if r["date"] == round_date.isoformat()), None
