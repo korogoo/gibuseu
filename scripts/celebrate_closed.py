@@ -12,17 +12,18 @@ import subprocess
 from datetime import date, timedelta
 from pathlib import Path
 
-import yaml
-
-from lib import COMMENT_PREFIX, is_blank, latest_round_date, missing_members, parse_sections, post_discord
+from lib import (
+    COMMENT_PREFIX,
+    is_blank,
+    latest_round_date,
+    load_members,
+    missing_members,
+    parse_sections,
+    post_discord,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 INTERVAL_DAYS = 4  # assign_teams.py의 INTERVAL_DAYS와 동일해야 함
-
-
-def load_members() -> list[str]:
-    data = yaml.safe_load((ROOT / "members.yaml").read_text(encoding="utf-8")) or {}
-    return [m["name"] for m in data.get("members", []) if m.get("name")]
 
 
 def gh(*args) -> None:
@@ -57,10 +58,11 @@ def main() -> None:
         f"📝 블로그 구경가기 → {blog}",
     ]
 
-    members = load_members()
     since = latest_round_date(ROOT)
     if since:
         next_presentation = date.fromisoformat(since) + timedelta(days=INTERVAL_DAYS)
+        # 이번 회차를 쉬기로 한 사람은 미제출자로 세지 않는다.
+        members = load_members(ROOT, next_presentation.isoformat())
         missing = missing_members(members, next_presentation.isoformat())
         if missing:
             lines.append(f"\n{', '.join(missing)}...당신들은 언제 쓰실 거에요..?")

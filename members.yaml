@@ -1,5 +1,7 @@
 # 기부스 스터디원 명단
 # name: 이름, blog: 블로그 URL (없으면 빈 문자열로 두고 나중에 채우기)
+# skip_rounds: 그 회차만 쉬는 경우 발표일(YYYY-MM-DD)을 적는다. 명단에서 지우지 말 것 —
+#              탈퇴가 아니라 한 회차 결석이면 조 배정/주제 제출 재촉에서만 빠진다.
 members:
   - name: "코로구"
     blog: "https://korogoo.site"
@@ -11,8 +13,7 @@ members:
     blog: ""
   - name: "은오"
     blog: ""
-  - name: "러로"
-    blog: ""
+    skip_rounds: ["2026-07-31"]
   - name: "캐리"
     blog: ""
   - name: "정콩이"

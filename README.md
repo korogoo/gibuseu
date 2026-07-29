@@ -80,7 +80,7 @@
 |---|---|
 | [`GUIDE.md`](./GUIDE.md) | 스터디원용 — 발표 등록 방법, 자동화 동작, 리마인더 안내 |
 | [`CATEGORIES.md`](./CATEGORIES.md) | 발표 대분류/소분류/유형 정의 |
-| [`members.yaml`](./members.yaml) | 스터디원 명단 |
+| [`members.yaml`](./members.yaml) | 스터디원 명단 (`skip_rounds`로 특정 회차 결석 표시) |
 | [`teams/history.yaml`](./teams/history.yaml) | 회차별 조 배정 이력 |
 | [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE) | 대분류별 발표 등록 폼 |
 | [`scripts/`](./scripts) | 조 배정·리마인더·Issue Form 생성 스크립트 |

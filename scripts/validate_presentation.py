@@ -21,9 +21,16 @@ import re
 import subprocess
 from pathlib import Path
 
-import yaml
-
-from lib import CATEGORY_LABELS, COMMENT_PREFIX, is_blank, load_state_set, parse_sections, post_discord, save_state_set
+from lib import (
+    CATEGORY_LABELS,
+    COMMENT_PREFIX,
+    is_blank,
+    load_members,
+    load_state_set,
+    parse_sections,
+    post_discord,
+    save_state_set,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 NEEDS_FIX_LABEL = "형식 확인 필요"
@@ -64,11 +71,6 @@ def gh_json(*args):
     return json.loads(out.stdout)
 
 
-def load_members() -> list[str]:
-    data = yaml.safe_load((ROOT / "members.yaml").read_text(encoding="utf-8")) or {}
-    return [m["name"] for m in data.get("members", []) if m.get("name")]
-
-
 def main() -> None:
     number = os.environ["ISSUE_NUMBER"]
     action = os.environ.get("ISSUE_ACTION", "opened")
@@ -78,7 +80,9 @@ def main() -> None:
     errors = []
 
     presenter = sections.get("발표자", "").strip()
-    members = load_members()
+    # 이름 검사는 회차 필터 없이 전체 명단으로 한다 — 쉬기로 한 사람이 마음을 바꿔
+    # 등록하는 건 막을 이유가 없다.
+    members = load_members(ROOT)
     if presenter and presenter not in members:
         errors.append(f"닉네임에 오타가 있나요? 확인해주세요. (입력값: {presenter})")
 

@@ -26,12 +26,11 @@ from pathlib import Path
 
 import yaml
 
-from lib import CATEGORY_LABELS, date_part, parse_sections
+from lib import CATEGORY_LABELS, date_part, load_members, parse_sections
 
 OPENAI_MODEL = "gpt-4o-mini"
 
 ROOT = Path(__file__).resolve().parent.parent
-MEMBERS_FILE = ROOT / "members.yaml"
 HISTORY_FILE = ROOT / "teams" / "history.yaml"
 TEAM_SIZES = [3, 3, 2]
 INTERVAL_DAYS = 4
@@ -83,11 +82,11 @@ def format_date_kr(d: date) -> str:
     return f"{d.month}/{d.day}({WEEKDAYS_KO[d.weekday()]})"
 
 
-def load_members() -> list[str]:
-    data = yaml.safe_load(MEMBERS_FILE.read_text(encoding="utf-8")) or {}
-    names = [m["name"] for m in data.get("members", []) if m.get("name")]
+def members_for_round(round_date: str) -> list[str]:
+    """그 회차를 쉬기로 한 사람(members.yaml의 skip_rounds)을 뺀 참여자 명단."""
+    names = load_members(ROOT, round_date)
     if not names:
-        sys.exit("members.yaml에 이름이 채워진 인원이 없습니다")
+        sys.exit("members.yaml에 이번 회차 참여자가 없습니다")
     return names
 
 
@@ -375,7 +374,6 @@ def main() -> None:
     parser.add_argument("--date", type=str, default=None, help="회차 날짜 직접 지정 (YYYY-MM-DD), D-1 검사 생략")
     args = parser.parse_args()
 
-    names = load_members()
     history = load_history()
     last_round = history["rounds"][-1] if history["rounds"] else None
 
@@ -392,6 +390,8 @@ def main() -> None:
             print(f"오늘은 다음 회차({round_date.isoformat()})의 D-1이 아니라서 스킵", file=sys.stderr)
             return
 
+    # 회차 날짜가 정해진 뒤에 명단을 읽는다 — 이번 회차를 쉬는 사람을 빼야 하기 때문.
+    names = members_for_round(round_date.isoformat())
     topics = load_topics(round_date.isoformat())
     missing = [n for n in names if n not in topics]
     if missing:

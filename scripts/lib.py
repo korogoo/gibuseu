@@ -13,6 +13,27 @@ COMMENT_PREFIX = "**[기부스지키미👀💸]**"
 CATEGORY_LABELS = {"CS", "데이터베이스", "인프라/DevOps", "아키텍처", "보안", "테스트/QA", "AI"}
 
 
+def load_members(root: Path, round_date: str | None = None) -> list[str]:
+    """members.yaml의 스터디원 이름 목록.
+
+    인원수는 고정이 아니다 (합류/탈퇴로 변한다) — 개수로 검증하지 마라.
+    특정 회차만 빠지는 사람은 명단에서 지우지 말고 `skip_rounds`에 그 회차
+    날짜를 넣어라. round_date를 주면 그 회차를 쉬는 사람을 빼고 돌려준다.
+    """
+    data = yaml.safe_load((root / "members.yaml").read_text(encoding="utf-8")) or {}
+    names = []
+    for member in data.get("members", []):
+        name = member.get("name")
+        if not name:
+            continue
+        # YAML에서 따옴표 없이 쓴 날짜는 date로 파싱되니 문자열로 맞춰서 비교한다.
+        skips = {str(r) for r in (member.get("skip_rounds") or [])}
+        if round_date and round_date in skips:
+            continue
+        names.append(name)
+    return names
+
+
 def is_blank(value: str) -> bool:
     return not value or value == "_No response_"
 

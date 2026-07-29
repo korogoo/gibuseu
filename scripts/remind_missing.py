@@ -8,21 +8,13 @@ D-1에 연관성 기준 팀 배정이 있으려면 D-2 자정까지 주제가 �
 from datetime import date, timedelta
 from pathlib import Path
 
-import yaml
-
-from lib import latest_round_date, missing_members, post_discord
+from lib import latest_round_date, load_members, missing_members, post_discord
 
 ROOT = Path(__file__).resolve().parent.parent
 INTERVAL_DAYS = 4  # assign_teams.py의 INTERVAL_DAYS와 동일해야 함
 
 
-def load_members() -> list[str]:
-    data = yaml.safe_load((ROOT / "members.yaml").read_text(encoding="utf-8")) or {}
-    return [m["name"] for m in data.get("members", []) if m.get("name")]
-
-
 def main() -> None:
-    members = load_members()
     since = latest_round_date(ROOT)
     if since is None:
         print("아직 배정된 회차가 없어서 스킵")
@@ -34,6 +26,8 @@ def main() -> None:
         print(f"오늘은 주제 제출 마감일이 아님 (다음 발표일: {next_presentation.isoformat()}) — 스킵")
         return
 
+    # 이번 회차를 쉬기로 한 사람은 제출 대상이 아니니 재촉하지 않는다.
+    members = load_members(ROOT, next_presentation.isoformat())
     missing = missing_members(members, next_presentation.isoformat())
     if not missing:
         print("all members registered")
